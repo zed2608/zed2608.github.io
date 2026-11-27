@@ -167,38 +167,33 @@ function albumCaption(name,description,changed,previous){const elements=[documen
 function showSlide(n,manual=false){const previous=slideIndex;slideIndex=(n+slides.length)%slides.length;slides.forEach((s,i)=>{s.hidden=false;const offset=(i-slideIndex+slides.length)%slides.length,pos=offset===0?0:offset===1?1:offset===slides.length-1?2:3;s.dataset.slot=String(pos);s.tabIndex=pos===3?-1:0;s.setAttribute('aria-hidden',String(pos===3));s.inert=pos===3;s.setAttribute('aria-label',(pos===0?'Open case study: ':'Bring to center: ')+s.querySelector('strong').textContent);});const count=document.getElementById('gallery-count');count.setAttribute('aria-live',manual?'polite':'off');count.textContent=`${String(slideIndex+1).padStart(2,'0')} / ${String(slides.length).padStart(2,'0')}`;albumCaption(slides[slideIndex].querySelector('strong').textContent,slides[slideIndex].querySelector('small').textContent,previous!==slideIndex,previous); document.getElementById('gallery-open').href=slides[slideIndex].getAttribute('href');document.querySelectorAll('[data-album]').forEach((b,i)=>b.setAttribute('aria-pressed',String(i===slideIndex)));scheduleGallery()}
 function scheduleGallery(){clearTimeout(galleryTimer);if(!galleryPaused&&!paused&&!reduce.matches&&!document.hidden&&!currentCase&&!transitioning&&currentScene==='work'&&galleryVisible&&!galleryHover&&!galleryFocus)galleryTimer=setTimeout(()=>showSlide(slideIndex+1),9000)}
 new IntersectionObserver(entries=>{galleryVisible=entries[0].isIntersecting;scheduleGallery()},{threshold:.25}).observe(gallery);gallery.querySelector('.gallery-controls').addEventListener('pointerenter',()=>{galleryHover=true;scheduleGallery()});gallery.querySelector('.gallery-controls').addEventListener('pointerleave',()=>{galleryHover=false;scheduleGallery()});gallery.addEventListener('focusin',()=>{galleryFocus=true;scheduleGallery()});gallery.addEventListener('focusout',e=>{galleryFocus=gallery.contains(e.relatedTarget);scheduleGallery()});document.getElementById('gallery-prev').onclick=()=>showSlide(slideIndex-1,true);document.getElementById('gallery-next').onclick=()=>showSlide(slideIndex+1,true);galleryPlay.onclick=()=>{galleryPaused=!galleryPaused;galleryPlay.textContent=galleryPaused?'Play':'Pause';galleryPlay.setAttribute('aria-pressed',String(galleryPaused));galleryPlay.setAttribute('aria-label',galleryPaused?'Resume featured photos':'Pause featured photos');scheduleGallery()};pause.addEventListener('click',scheduleGallery);reduce.addEventListener('change',scheduleGallery);document.addEventListener('visibilitychange',scheduleGallery);addEventListener('hashchange',scheduleGallery);
-// Sound is explicitly opt-in. No external music, streams, or audio files.
+// Interface and ambient audio are opt-in; pet voices are local audio assets.
 let audio=null,sfx=false,ambience=false,ambientNodes=[],master=null,ambientBus=null,lastHover=0;const soundToggle=document.getElementById('sound-toggle'),ambienceToggle=document.getElementById('ambience-toggle'),audioStatus=document.getElementById('audio-status');
 async function ensureAudio(){try{if(!audio){const AC=window.AudioContext||window.webkitAudioContext;if(!AC)throw Error('Unavailable');audio=new AC();master=audio.createGain();master.gain.value=.62;master.connect(audio.destination)}await audio.resume();return true}catch{audioStatus.textContent='Audio is not available in this browser.';return false}}
 function tone(kind){if(!sfx||!audio||audio.state!=='running'||document.hidden)return;const now=audio.currentTime,o=audio.createOscillator(),g=audio.createGain();o.type='sine';o.frequency.setValueAtTime(kind==='click'?460:680,now);o.frequency.exponentialRampToValueAtTime(kind==='click'?330:550,now+.085);g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(kind==='click'?.22:.105,now+.012);g.gain.exponentialRampToValueAtTime(.0001,now+.105);o.connect(g);g.connect(master);o.start(now);o.stop(now+.12);o.onended=()=>{o.disconnect();g.disconnect()}}
 function startAmbience(){if(!audio||ambientNodes.length)return;const t=audio.currentTime;ambientBus=audio.createGain();ambientBus.gain.setValueAtTime(0,t);ambientBus.gain.linearRampToValueAtTime(.32,t+1.4);ambientBus.connect(master);for(const [freq,gain,rate] of [[110,.22,.0207],[164.81,.10,.0175],[220,.065,.025]]){const o=audio.createOscillator(),g=audio.createGain(),lfo=audio.createOscillator(),depth=audio.createGain();o.type='sine';o.frequency.value=freq;g.gain.value=gain;lfo.frequency.value=rate;depth.gain.value=gain*.25;lfo.connect(depth);depth.connect(g.gain);o.connect(g);g.connect(ambientBus);o.start(t);lfo.start(t);ambientNodes.push({o,g,lfo,depth})}}
-// Pet voices are original synthesized sounds, triggered only by deliberate clicks.
-let petSounds=true,petVoiceActive=false;
+// Original, normalized PCM pet voices. HTML media playback begins synchronously on a user click,
+// independent of the interface AudioContext and its suspension/autoplay restrictions.
+let petSounds=true;
 try{petSounds=localStorage.getItem('ajr-pet-sounds')!=='off'}catch{}
 const petSoundToggle=document.getElementById('pet-sound-toggle');
+const petVoices={cat:document.getElementById('cat-voice'),dog:document.getElementById('dog-voice')};
+let petAudioGeneration=0;
 function syncPetSound(){petSoundToggle.setAttribute('aria-pressed',String(petSounds));iconLabel(petSoundToggle,'Pet sounds: '+(petSounds?'On':'Off'))}
-syncPetSound();petSoundToggle.onclick=()=>{petSounds=!petSounds;try{localStorage.setItem('ajr-pet-sounds',petSounds?'on':'off')}catch{}syncPetSound()};
-async function petVoice(cat){
- if(!petSounds||petVoiceActive||document.hidden)return;
- petVoiceActive=true;
- if(!await ensureAudio()){petVoiceActive=false;return}
- if(!petSounds||document.hidden){petVoiceActive=false;return}
- const start=audio.currentTime+.015,duration=cat?.66:.45;
- const bus=audio.createGain(),soft=audio.createDynamicsCompressor();soft.threshold.value=-17;soft.ratio.value=4;bus.gain.value=cat?.45:.40;bus.connect(soft);soft.connect(master);
- function vocal(at,len,freq,amp,formants){
-  const o=audio.createOscillator(),env=audio.createGain();o.type='sawtooth';
-  o.frequency.setValueAtTime(freq[0],at);o.frequency.exponentialRampToValueAtTime(freq[1],at+len*.25);o.frequency.exponentialRampToValueAtTime(freq[2],at+len*.70);o.frequency.exponentialRampToValueAtTime(freq[3],at+len);
-  env.gain.setValueAtTime(.0001,at);env.gain.exponentialRampToValueAtTime(amp,at+len*.10);env.gain.exponentialRampToValueAtTime(amp*.67,at+len*.64);env.gain.exponentialRampToValueAtTime(.0001,at+len);
-  for(const [f0,f1,q,g] of formants){const filter=audio.createBiquadFilter(),mix=audio.createGain();filter.type='bandpass';filter.Q.value=q;filter.frequency.setValueAtTime(f0,at);filter.frequency.exponentialRampToValueAtTime(f1,at+len);mix.gain.value=g;o.connect(filter);filter.connect(mix);mix.connect(env)}
-  env.connect(bus);o.start(at);o.stop(at+len+.02);
- }
- if(cat){
-  vocal(start,.62,[390,570,455,265],.95,[[800,410,2.1,.78],[1800,1150,3.3,.40],[2750,2300,3,.15]]);
- }else{
-  for(const offset of [0,.22]){const at=start+offset,len=.17;vocal(at,len,[160,255,135,80],.95,[[620,360,1.6,.85],[1250,800,2.2,.42]]);const noise=audio.createBuffer(1,Math.floor(audio.sampleRate*len),audio.sampleRate),data=noise.getChannelData(0);let last=0;for(let i=0;i<data.length;i++){last=.64*last+.36*(Math.random()*2-1);data[i]=last}const src=audio.createBufferSource(),f=audio.createBiquadFilter(),g=audio.createGain();src.buffer=noise;f.type='bandpass';f.frequency.value=850;f.Q.value=.65;g.gain.setValueAtTime(.001,at);g.gain.linearRampToValueAtTime(.53,at+.014);g.gain.exponentialRampToValueAtTime(.001,at+len);src.connect(f);f.connect(g);g.connect(bus);src.start(at);}
- }
- setTimeout(()=>{bus.disconnect();soft.disconnect();petVoiceActive=false},(duration+.15)*1000);
+function stopPetVoices(){for(const v of Object.values(petVoices)){v.pause();try{v.currentTime=0}catch{}}}
+syncPetSound();
+petSoundToggle.onclick=()=>{petSounds=!petSounds;petAudioGeneration++;if(!petSounds)stopPetVoices();try{localStorage.setItem('ajr-pet-sounds',petSounds?'on':'off')}catch{}syncPetSound();audioStatus.textContent=petSounds?'Pet sounds enabled. Click either companion.':'Pet sounds muted.'};
+function petVoice(cat){
+ if(!petSounds)return;
+ const generation=++petAudioGeneration,kind=cat?'cat':'dog',v=petVoices[kind];
+ stopPetVoices();v.muted=false;v.volume=.95;
+ // Do not await another operation before play(): keep the original trusted activation.
+ document.getElementById('pet-station').dataset.soundState='starting';
+ const fail=()=>{if(generation!==petAudioGeneration)return;document.getElementById('pet-station').dataset.soundState='blocked';audioStatus.textContent='Pet audio could not play. Check browser or device sound settings.';document.getElementById('pet-status').textContent='Sound unavailable. Check browser or device sound settings.'};
+ try{const playback=v.play();Promise.resolve(playback).then(()=>{if(generation!==petAudioGeneration)return;const station=document.getElementById('pet-station');station.dataset.soundState='playing';station.dataset.lastSound=kind;audioStatus.textContent='';}).catch(fail)}catch{fail()}
 }
+for(const v of Object.values(petVoices))v.addEventListener('ended',()=>{const station=document.getElementById('pet-station');if(Object.values(petVoices).every(x=>x.paused))station.dataset.soundState='ended'});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){petAudioGeneration++;stopPetVoices()}});
 let lastSync=0;window.syncAmbient=t=>{if(!ambience||!ambientBus||audio.state!=='running'||t-lastSync<.25)return;lastSync=t;ambientBus.gain.setTargetAtTime(.32+.025*Math.sin(t*.13),audio.currentTime,.4)};
 function stopAmbience(){if(!ambientNodes.length||!audio)return;const t=audio.currentTime,nodes=ambientNodes,bus=ambientBus;ambientNodes=[];ambientBus=null;bus.gain.cancelScheduledValues(t);bus.gain.setTargetAtTime(0,t,.12);nodes.forEach(({o,lfo})=>{o.stop(t+.55);lfo.stop(t+.55)});setTimeout(()=>{nodes.forEach(({o,g,lfo,depth})=>[o,g,lfo,depth].forEach(n=>n.disconnect()));bus.disconnect()},700)}
 soundToggle.onclick=async()=>{if(sfx){sfx=false}else if(await ensureAudio()){sfx=true;tone('click')}soundToggle.setAttribute('aria-pressed',String(sfx));iconLabel(soundToggle,`Interface sounds: ${sfx?'On':'Off'}`)};ambienceToggle.onclick=async()=>{if(ambience){ambience=false;stopAmbience()}else if(await ensureAudio()){ambience=true;startAmbience()}ambienceToggle.setAttribute('aria-pressed',String(ambience));iconLabel(ambienceToggle,`Ambient sound: ${ambience?'On':'Off'}`)};
@@ -222,7 +217,7 @@ window.addEventListener('keydown',e=>{if(transitioning||currentCase||siteMenu.op
 window.addEventListener('scenechange',()=>{sceneStart=Date.now();chapterUpdate();queueEffects();sceneQueue();orbitSceneQueue();scheduleGallery()});
 const petStation=document.getElementById('pet-station'),petToggle=document.getElementById('pet-toggle'),petStatus=document.getElementById('pet-status');let pets=true,petTimer=0;try{pets=localStorage.getItem('ajr-v15-pets')!=='off'}catch{};function petVisibility(){petStation.classList.toggle('is-hidden',!pets);petToggle.setAttribute('aria-pressed',String(pets));iconLabel(petToggle,`Pixel companions: ${pets?'On':'Off'}`)};petToggle.onclick=()=>{pets=!pets;petVisibility();try{localStorage.setItem('ajr-v15-pets',pets?'on':'off')}catch{}};petVisibility();
 creativeToggle.onclick=()=>{creative=!creative;syncCreative();try{localStorage.setItem("ajr-v14-creative",creative?"on":"off")}catch{};draw()};
-for(const pet of petStation.querySelectorAll('.pet')){let reactionTimer=0;const react=(kind)=>{if(paused||reduce.matches)return;clearTimeout(reactionTimer);pet.classList.remove('react-hover','react-click');void pet.offsetWidth;pet.classList.add('react-'+kind);reactionTimer=setTimeout(()=>pet.classList.remove('react-hover','react-click'),kind==='click'?1000:650)};pet.addEventListener('pointerenter',()=>react('hover'));pet.addEventListener('focus',()=>react('hover'));pet.addEventListener('click',()=>{react('click');const cat=pet.classList.contains('pet-cat');void petVoice(cat);petStatus.textContent=cat?'Meow! Calico pounces.':'Woof! Dog jumps and wags.';clearTimeout(petTimer);petTimer=setTimeout(()=>petStatus.textContent='',1500)})}
+for(const pet of petStation.querySelectorAll('.pet')){let reactionTimer=0;const react=(kind)=>{if(paused||reduce.matches)return;clearTimeout(reactionTimer);pet.classList.remove('react-hover','react-click');void pet.offsetWidth;pet.classList.add('react-'+kind);reactionTimer=setTimeout(()=>pet.classList.remove('react-hover','react-click'),kind==='click'?1000:650)};pet.addEventListener('pointerenter',()=>react('hover'));pet.addEventListener('focus',()=>react('hover'));pet.addEventListener('click',()=>{react('click');const cat=pet.classList.contains('pet-cat');petVoice(cat);petStatus.textContent=cat?'Meow! Calico pounces.':'Woof! Dog jumps and wags.';clearTimeout(petTimer);petTimer=setTimeout(()=>petStatus.textContent='',1500)})}
 // On wide, tall screens keep companions outside the hidden case-study overview.
 document.body.append(petStation);
 // Paired walk / playful clash / retreat uses a shared CSS timeline.

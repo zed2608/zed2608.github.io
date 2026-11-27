@@ -963,3 +963,12 @@ html[data-ajr-theme][data-scene=contact] .profile>.portrait .formal-portrait{wid
 html[data-ajr-theme][data-scene=contact] .profile>.portrait .formal-portrait{object-position:50% 34%}
 #arrival-21[data-orbit-phase="loading"] .arrival-loader svg>circle:first-child{stroke-opacity:.55}
 #arrival-21[data-orbit-phase="loading"] .load-orbit{opacity:.8}
+
+/* V1.2.4 — proportional home-name breathing room, without moving the portrait or contact identity. */
+html[data-ajr-theme][data-scene=welcome] .profile>.identity h2{
+ margin-top:clamp(12px,1.8vh,19px)!important;
+ line-height:1.22!important;
+}
+@media(max-width:760px){
+ html[data-ajr-theme][data-scene=welcome] .profile>.identity h2{margin-top:12px!important}
+}
