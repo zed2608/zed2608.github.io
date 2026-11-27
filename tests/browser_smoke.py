@@ -52,6 +52,7 @@ with sync_playwright() as pw:
  p.locator('#menu-trigger').click()
  assert p.locator('#creative-toggle,#pet-sound-toggle,#rocket-sound-toggle,#sound-toggle,#ambience-toggle').count()==0
  assert p.locator('#effects-sound-toggle,#site-sound-toggle').count()==2
+ assert p.locator('#replay-arrival').count()==0
  assert p.evaluate("creative && document.documentElement.classList.contains('creative-mode') && pets && !paused")
  assert p.locator('#site-sound-toggle').get_attribute('aria-pressed')=='true';assert p.locator('#effects-sound-toggle').get_attribute('aria-pressed')=='true'
  p.wait_for_function('sfx && ambience && ambientNodes.length > 0')
