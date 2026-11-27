@@ -4,7 +4,7 @@ from functools import partial
 from http.server import ThreadingHTTPServer,SimpleHTTPRequestHandler
 from threading import Thread
 from playwright.sync_api import sync_playwright
-import os, json
+import os, json, time
 ROOT=Path(__file__).resolve().parents[1]
 class Quiet(SimpleHTTPRequestHandler):
  def log_message(self,*args): pass
@@ -38,5 +38,14 @@ with sync_playwright() as pw:
   results.append(f'{w}px home width')
  context.close()
  # Full-motion path, verify arrival and exact page marker positioning after settled navigation.
- c=browser.new_context(viewport={'width':1440,'height':900},reduced_motion='no-preference');p=c.new_page();p.on('pageerror',lambda e:errors.append(str(e)));p.set_content(Path(os.environ['INLINE_PREVIEW']).read_text(),wait_until='load') if 'INLINE_PREVIEW' in os.environ else p.goto(url,wait_until='networkidle');p.wait_for_timeout(10000);assert p.locator('#arrival-21').is_hidden();assert p.locator('#v26-thread').count()==1;assert not p.locator('html').evaluate("e=>e.classList.contains('portfolio-boot')");assert p.evaluate("""()=>{const r=document.querySelector('#v26-thread').getBoundingClientRect(),a=document.querySelector('.profile>.comet-home').getBoundingClientRect();return Math.hypot((r.left+r.width/2)-(a.left+a.width/2),(r.top+r.height/2)-(a.top+a.height/2))<2}""");p.evaluate("location.hash='work'");p.wait_for_timeout(4500);assert p.locator('#work').is_visible();p.evaluate("location.hash='welcome'");p.wait_for_timeout(4500);assert p.locator('#welcome').is_visible();results.append('Full-motion arrival and forward/reverse navigation');browser.close()
+ c=browser.new_context(viewport={'width':1440,'height':900},reduced_motion='no-preference');p=c.new_page();p.on('pageerror',lambda e:errors.append(str(e)))
+ if 'INLINE_PREVIEW' not in os.environ:
+  p.add_init_script("""window.__boInitialFrames=[];function sample(){const shell=document.querySelector('.shell'),arrival=document.querySelector('#arrival-21');if(shell&&!document.documentElement.dataset.scene){window.__boInitialFrames.push({shellHidden:getComputedStyle(shell).opacity==='0',loaderVisible:!!arrival&&getComputedStyle(arrival).display!=='none'});}if(!document.documentElement.dataset.scene)requestAnimationFrame(sample);}requestAnimationFrame(sample);""")
+  def delay_main(route):
+   time.sleep(.7);route.continue_()
+  p.route('**/js/portfolio.js',delay_main)
+ p.set_content(Path(os.environ['INLINE_PREVIEW']).read_text(),wait_until='load') if 'INLINE_PREVIEW' in os.environ else p.goto(url,wait_until='networkidle');p.wait_for_timeout(10000);assert p.locator('#arrival-21').is_hidden();assert p.locator('#v26-thread').count()==1;assert not p.locator('html').evaluate("e=>e.classList.contains('portfolio-boot')");assert p.evaluate("""()=>{const r=document.querySelector('#v26-thread').getBoundingClientRect(),a=document.querySelector('.profile>.comet-home').getBoundingClientRect();return Math.hypot((r.left+r.width/2)-(a.left+a.width/2),(r.top+r.height/2)-(a.top+a.height/2))<2}""");p.evaluate("location.hash='work'");p.wait_for_timeout(4500);assert p.locator('#work').is_visible();p.evaluate("location.hash='welcome'");p.wait_for_timeout(4500);assert p.locator('#welcome').is_visible();results.append('Full-motion arrival and forward/reverse navigation')
+ if 'INLINE_PREVIEW' not in os.environ:
+  frames=p.evaluate('window.__boInitialFrames');assert frames and all(f['shellHidden'] and f['loaderVisible'] for f in frames),frames;results.append('No portfolio flash before delayed startup')
+ browser.close()
 server.shutdown();print(json.dumps({'checks':results,'page_errors':errors,'failed_http':failed},indent=2));assert not errors and not failed
