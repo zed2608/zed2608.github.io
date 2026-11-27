@@ -952,3 +952,14 @@ html:not(.paused) #v26-thread.dock-pulse::after{animation:bo-dock-ring .78s ease
  #v26-thread svg,#v26-thread::before,#v26-thread::after{transition:none!important;animation:none!important;transform:none!important}
  html[data-ajr-theme="light"][data-scene="welcome"] .profile,html[data-ajr-theme="light"][data-scene="welcome"] .profile::before{transition:none!important}
 }
+
+/* V1.2.3 — new authentic portrait and precise initial loading-ring orbit. */
+html[data-ajr-theme] .profile>.portrait .formal-portrait{
+ inset:0;translate:none;width:100%;max-width:none;height:100%;object-fit:cover;object-position:50% 41%;
+ border-radius:inherit;transform:none!important;filter:none!important;
+}
+html[data-ajr-theme][data-scene=welcome] .profile>.portrait .formal-portrait,
+html[data-ajr-theme][data-scene=contact] .profile>.portrait .formal-portrait{width:100%;max-width:none}
+html[data-ajr-theme][data-scene=contact] .profile>.portrait .formal-portrait{object-position:50% 34%}
+#arrival-21[data-orbit-phase="loading"] .arrival-loader svg>circle:first-child{stroke-opacity:.55}
+#arrival-21[data-orbit-phase="loading"] .load-orbit{opacity:.8}
