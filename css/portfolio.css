@@ -908,3 +908,47 @@ html.arriving #arrival-21{touch-action:none;overscroll-behavior:contain}
 
 /* V1.2: keep Skip introduction in its original right-hand position without a brand label. */
 #arrival-21 .arrival-bottom{justify-content:flex-end}
+
+/* V1.2.1 — full-orbit docking, tactile companions, and balanced theme interactions. */
+#arrival-21 .arrival-bottom{justify-content:flex-end}
+html[data-scene="contact"] .profile>.portrait .portrait-mark{display:none!important}
+.profile>.portrait .formal-portrait{left:50%;right:auto;top:auto;bottom:0;translate:-50% 0;object-fit:contain;object-position:center bottom}
+html[data-scene="welcome"] .profile>.portrait .formal-portrait{width:min(100%,355px)}
+html[data-ajr-theme="light"] .profile>.portrait{background:radial-gradient(ellipse at 50% 29%,#f8eddc 0%,#e4cfaf 50%,#c3a47d 100%)!important}
+html[data-ajr-theme="dark"] .profile>.portrait{background:radial-gradient(ellipse at 50% 29%,#9ba6a8 0%,#536875 51%,#293743 100%)!important}
+html[data-ajr-theme="light"][data-scene="welcome"] .profile{
+ transition:border-color .45s,box-shadow .45s,background-color .45s;
+}
+html[data-ajr-theme="light"][data-scene="welcome"] .profile::before{
+ content:"";position:absolute;inset:0!important;z-index:-1;pointer-events:none;border-radius:inherit;
+ background:radial-gradient(ellipse at var(--mx,50%) var(--my,50%),#bf92552b,transparent 58%)!important;
+ opacity:0;transition:opacity .45s ease;
+}
+@media(hover:hover) and (pointer:fine){
+ html[data-ajr-theme="light"][data-scene="welcome"] .profile:hover{
+  border-color:#b18b5d!important;box-shadow:0 18px 66px #6c4d2922,0 0 0 1px #b18b5d44!important;
+ }
+ html[data-ajr-theme="light"][data-scene="welcome"] .profile:hover::before{opacity:1}
+}
+html[data-ajr-theme="light"][data-scene="welcome"] .profile:focus-within::before{opacity:1}
+#v26-thread{appearance:none;background:transparent;border:0;padding:0;margin:0;border-radius:50%;color:var(--accent);overflow:visible}
+#v26-thread:not(:disabled)[data-docked]:not([data-docked=""]){pointer-events:auto;cursor:pointer}
+#v26-thread:disabled{pointer-events:none;opacity:1}
+#v26-thread svg{transition:transform .32s cubic-bezier(.22,.75,.2,1),filter .32s;transform-origin:center}
+#v26-thread::before,#v26-thread::after{content:"";position:absolute;inset:-6px;border:1px solid currentColor;border-radius:50%;opacity:0;pointer-events:none}
+@media(hover:hover) and (pointer:fine){
+ html:not(.paused) #v26-thread:not(:disabled):hover svg{transform:translateY(-2px) scale(1.22) rotate(-6deg);filter:drop-shadow(0 0 5px currentColor)}
+ html:not(.paused) #v26-thread:not(:disabled):hover::before{opacity:.62;animation:bo-dock-hover 1.4s ease-out infinite}
+ html:not(.paused) #v26-thread:not(:disabled):hover .rocket-flame{opacity:.52}
+}
+#v26-thread:not(:disabled):focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+html:not(.paused) #v26-thread.dock-pulse svg{animation:bo-dock-pop .76s cubic-bezier(.22,.75,.2,1)}
+html:not(.paused) #v26-thread.dock-pulse .rocket-flame{opacity:.88}
+html:not(.paused) #v26-thread.dock-pulse::after{animation:bo-dock-ring .78s ease-out}
+@keyframes bo-dock-hover{0%{transform:scale(.78);opacity:.62}100%{transform:scale(1.52);opacity:0}}
+@keyframes bo-dock-ring{0%{transform:scale(.62);opacity:.9}100%{transform:scale(2.4);opacity:0}}
+@keyframes bo-dock-pop{0%,100%{transform:none}30%{transform:translateY(-8px) rotate(-10deg) scale(1.23)}65%{transform:translateY(1px) scale(.94)}}
+@media(prefers-reduced-motion:reduce){
+ #v26-thread svg,#v26-thread::before,#v26-thread::after{transition:none!important;animation:none!important;transform:none!important}
+ html[data-ajr-theme="light"][data-scene="welcome"] .profile,html[data-ajr-theme="light"][data-scene="welcome"] .profile::before{transition:none!important}
+}
