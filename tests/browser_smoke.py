@@ -84,5 +84,6 @@ with sync_playwright() as pw:
   ap=autoplay_browser.new_page();ap.on('pageerror',lambda e:errors.append(str(e)));ap.goto(url,wait_until='domcontentloaded')
   ap.wait_for_function("document.documentElement.dataset.audioState==='running' && document.querySelector('#v26-thread').dataset.engineSound==='playing' && ambientNodes.length>0")
   ap.wait_for_function("document.documentElement.dataset.openingSound==='playing' || document.documentElement.dataset.openingSound==='ended'")
+  assert ap.evaluate("document.documentElement.dataset.ambientStyle==='quiet-piano' && document.querySelector('#v26-thread').dataset.flightSoundStyle==='cute-two-note'")
   assert ap.locator('#arrival-rocket-audio').get_attribute('aria-label')=='Mute all audio';autoplay_browser.close();results.append('Autoplay-permitted browser starts opening cue, engine and ambience without interaction')
 server.shutdown();print(json.dumps({'checks':results,'page_errors':errors,'failed_http':failed},indent=2));assert not errors and not failed

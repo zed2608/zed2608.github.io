@@ -184,20 +184,40 @@ async function ensureAudio(){
  }catch{audioStatus.textContent='Audio is not available in this browser.';return false}
 }
 function tone(kind){if(!sfx||!audio||audio.state!=='running'||document.hidden)return;const now=audio.currentTime,o=audio.createOscillator(),g=audio.createGain();o.type='sine';o.frequency.setValueAtTime(kind==='click'?460:680,now);o.frequency.exponentialRampToValueAtTime(kind==='click'?330:550,now+.085);g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(kind==='click'?.38:.19,now+.012);g.gain.exponentialRampToValueAtTime(.0001,now+.105);o.connect(g);g.connect(master);o.start(now);o.stop(now+.12);o.onended=()=>{o.disconnect();g.disconnect()}}
-// Warm A-major add-nine pad: consonant sustained tones with unhurried breathing.
+// A sparse original felt-piano-like soundscape, with breathing room between notes.
+// No sustained drone, continuous bass, noise bed or rapid repeating melody.
 function startAmbience(){
- if(!audio||ambientNodes.length)return;const t=audio.currentTime;
- ambientBus=audio.createGain();ambientBus.gain.setValueAtTime(0,t);ambientBus.gain.linearRampToValueAtTime(.80,t+1.8);ambientBus.connect(master);
- const voices=[[110,.17,.034],[164.8138,.14,.047],[220,.13,.025],[277.1826,.085,.031],[329.6276,.095,.041],[493.8833,.045,.023]];
- for(const [freq,gain,rate] of voices){
-  const o=audio.createOscillator(),g=audio.createGain(),lfo=audio.createOscillator(),depth=audio.createGain();
-  o.type='sine';o.frequency.value=freq;g.gain.value=gain;lfo.frequency.value=rate;depth.gain.value=gain*.17;
-  lfo.connect(depth);depth.connect(g.gain);o.connect(g);g.connect(ambientBus);o.start(t);lfo.start(t);ambientNodes.push({o,g,lfo,depth});
- }
+ if(!audio||ambientNodes.length)return;
+ const t=audio.currentTime,bus=audio.createGain();
+ ambientBus=bus;bus.gain.setValueAtTime(0,t);bus.gain.linearRampToValueAtTime(.66,t+1.15);bus.connect(master);
+ const group={bus,voices:new Set(),timer:0,next:t+.08,index:0};
+ ambientNodes.push(group);
+ // Amaj9, F#m7, Dmaj7, E6: sparse, consonant voicings.
+ const phrases=[[220,329.6276,493.8833],[184.9972,277.1826,440],[146.8324,277.1826,440],[164.8138,246.9417,415.3047]];
+ const note=(frequency,at,level)=>{
+  const env=audio.createGain();env.gain.setValueAtTime(.0001,at);env.gain.exponentialRampToValueAtTime(level,at+.095);env.gain.exponentialRampToValueAtTime(level*.35,at+.64);env.gain.exponentialRampToValueAtTime(.0001,at+3.3);env.connect(bus);
+  const voice={env,oscillators:[],partials:[]};group.voices.add(voice);
+  for(const [ratio,amp] of [[1,.88],[2,.085],[3,.025]]){
+   const o=audio.createOscillator(),g=audio.createGain();o.type='sine';o.frequency.value=frequency*ratio;g.gain.value=amp;
+   o.connect(g);g.connect(env);voice.oscillators.push(o);voice.partials.push(g);o.start(at);o.stop(at+3.35);
+  }
+  voice.oscillators[0].onended=()=>{for(const n of [...voice.oscillators,...voice.partials,env])n.disconnect();group.voices.delete(voice)};
+ };
+ const schedule=()=>{
+  if(!ambience||audio.state!=='running'||document.hidden||ambientNodes[0]!==group)return;
+  const now=audio.currentTime;
+  if(group.next<now-.15)group.next=now+.05;
+  while(group.next<=now+.25){
+   const chord=phrases[group.index%phrases.length],at=Math.max(now+.025,group.next);
+   note(chord[0],at,.13);note(chord[1],at+1.12,.115);note(chord[2],at+2.65,.085);
+   group.index++;group.next+=6.7;
+  }
+ };
+ group.timer=setInterval(schedule,180);schedule();root.dataset.ambientStyle='quiet-piano';
 }
 
 // Original cinematic rocket audio. Browser activation is required before the engine or hover can sound.
-let rocketSounds=true,rocketEngine=null,rocketNoise=null,rocketFlightNoise=null,rocketHoverAt=0;
+let rocketSounds=true,rocketEngine=null,rocketNoise=null,rocketHoverAt=0;
 try{const saved=localStorage.getItem('ajr-effects-sounds');rocketSounds=saved===null?(localStorage.getItem('ajr-rocket-sounds')!=='off'&&localStorage.getItem('ajr-pet-sounds')!=='off'):saved!=='off'}catch{}
 const effectsSoundToggle=document.getElementById('effects-sound-toggle'),arrivalRocketAudio=document.getElementById('arrival-rocket-audio');
 function syncRocketSound(){
@@ -218,36 +238,35 @@ function rocketNoiseBuffer(){
  for(let i=0;i<samples.length;i++){low=.7*low+.3*(Math.random()*2-1);samples[i]=low}
  rocketNoise=buffer;return buffer;
 }
-// A separate, seamless softly filtered air texture for flight (click cues keep their own noise).
-function rocketFlightBuffer(){
- if(rocketFlightNoise)return rocketFlightNoise;
- const len=Math.floor(audio.sampleRate*4),fade=Math.floor(audio.sampleRate*.18),buffer=audio.createBuffer(1,len,audio.sampleRate),out=buffer.getChannelData(0),raw=new Float32Array(len+fade);
- let low=0,slow=0;
- for(let i=0;i<raw.length;i++){low=.86*low+.14*(Math.random()*2-1);slow=.78*slow+.22*low;raw[i]=slow*2.1}
- for(let i=0;i<len;i++){const k=i<fade?i/fade:1;out[i]=i<fade?raw[len+i]*(1-k)+raw[i]*k:raw[i]}
- rocketFlightNoise=buffer;return buffer;
-}
+// Flight uses a brief, rounded two-note "pwip-pwip" instead of engine noise or a loop.
 function stopRocketEngine(){
  if(!rocketEngine)return;const e=rocketEngine;rocketEngine=null;const now=audio.currentTime;
- e.gain.gain.cancelScheduledValues(now);e.gain.gain.setTargetAtTime(0,now,.12);
- for(const node of e.sources){try{node.stop(now+.46)}catch{}}
- setTimeout(()=>{for(const node of e.nodes){try{node.disconnect()}catch{}}},520);
+ e.gain.gain.cancelScheduledValues(now);e.gain.gain.setTargetAtTime(0,now,.045);
+ for(const node of e.sources){try{node.stop(now+.15)}catch{}}
+ setTimeout(()=>{for(const node of e.nodes){try{node.disconnect()}catch{}}},200);
  if(v26Mark)v26Mark.dataset.engineSound='stopped';
 }
 function syncRocketEngine(){
  if(!rocketSounds||!audio||audio.state!=='running'||!motionOK()||!v26Mark?.classList.contains('comet-flying')){stopRocketEngine();return}
- const now=audio.currentTime;
  if(rocketEngine)return;
- const noise=audio.createBufferSource(),filter=audio.createBiquadFilter(),osc=audio.createOscillator(),rumble=audio.createGain(),gain=audio.createGain();
- noise.buffer=rocketFlightBuffer();noise.loop=true;filter.type='lowpass';filter.frequency.value=760;filter.Q.value=.45;osc.type='sine';osc.frequency.value=146.83;rumble.gain.value=.27;gain.gain.setValueAtTime(0,now);gain.gain.linearRampToValueAtTime(.76,now+.45);
- noise.connect(filter);filter.connect(gain);osc.connect(rumble);rumble.connect(gain);gain.connect(master);noise.start(now);osc.start(now);
- rocketEngine={gain,filter,osc,sources:[noise,osc],nodes:[noise,filter,osc,rumble,gain]};
- v26Mark.dataset.engineSound='playing';
+ const now=audio.currentTime,gain=audio.createGain(),sources=[],nodes=[gain];
+ gain.gain.value=.8;gain.connect(master);
+ const chirp=(offset,len,from,top,to,level)=>{
+  const at=now+offset,o=audio.createOscillator(),env=audio.createGain();o.type='sine';
+  o.frequency.setValueAtTime(from,at);o.frequency.exponentialRampToValueAtTime(top,at+len*.48);o.frequency.exponentialRampToValueAtTime(to,at+len);
+  env.gain.setValueAtTime(.0001,at);env.gain.exponentialRampToValueAtTime(level,at+.045);env.gain.exponentialRampToValueAtTime(level*.65,at+len*.52);env.gain.exponentialRampToValueAtTime(.0001,at+len);
+  o.connect(env);env.connect(gain);o.start(at);o.stop(at+len+.02);sources.push(o);nodes.push(o,env);
+ };
+ chirp(.025,.24,315,510,380,.16);chirp(.29,.32,390,620,490,.115);
+ rocketEngine={gain,sources,nodes};
+ v26Mark.dataset.engineSound='playing';v26Mark.dataset.flightSoundStyle='cute-two-note';
 }
 function rocketThrustSound(thrust){
- if(!rocketEngine||!audio||audio.state!=='running')return;const x=Math.max(0,Math.min(1,thrust)),now=audio.currentTime;
- rocketEngine.gain.gain.setTargetAtTime(.12+.64*x,now,.22);rocketEngine.filter.frequency.setTargetAtTime(360+460*x,now,.24);rocketEngine.osc.frequency.setTargetAtTime(110+36.83*x,now,.28);
+ if(!rocketEngine||!audio||audio.state!=='running')return;
+ // Fade any remaining cue during docking; never restart or loop the flight sound.
+ const x=Math.max(0,Math.min(1,thrust));rocketEngine.gain.gain.setTargetAtTime(.8*x,audio.currentTime,.12);
 }
+
 async function rocketCue(kind,activate){
  if(!rocketSounds||document.hidden)return;
  if(activate){if(!await ensureAudio())return;syncRocketSound()}
@@ -329,8 +348,18 @@ function petVoice(cat){
 }
 for(const v of Object.values(petVoices))v.addEventListener('ended',()=>{const station=document.getElementById('pet-station');if(!petFallbackNode&&Object.values(petVoices).every(x=>x.paused))station.dataset.soundState='ended'});
 document.addEventListener('visibilitychange',()=>{if(document.hidden){petAudioGeneration++;stopPetVoices()}});
-let lastSync=0;window.syncAmbient=t=>{if(!ambience||!ambientBus||audio.state!=='running'||t-lastSync<.25)return;lastSync=t;ambientBus.gain.setTargetAtTime(.80+.035*Math.sin(t*.085),audio.currentTime,1.2)};
-function stopAmbience(){if(!ambientNodes.length||!audio)return;const t=audio.currentTime,nodes=ambientNodes,bus=ambientBus;ambientNodes=[];ambientBus=null;bus.gain.cancelScheduledValues(t);bus.gain.setTargetAtTime(0,t,.18);nodes.forEach(({o,lfo})=>{o.stop(t+.75);lfo.stop(t+.75)});setTimeout(()=>{nodes.forEach(({o,g,lfo,depth})=>[o,g,lfo,depth].forEach(n=>n.disconnect()));bus.disconnect()},900)}
+// Audio scheduling is independent of the visual animation clock.
+window.syncAmbient=()=>{};
+function stopAmbience(){
+ if(!ambientNodes.length||!audio)return;
+ const t=audio.currentTime,groups=ambientNodes;ambientNodes=[];ambientBus=null;
+ for(const group of groups){
+  clearInterval(group.timer);group.bus.gain.cancelScheduledValues(t);group.bus.gain.setTargetAtTime(0,t,.13);
+  for(const voice of group.voices){for(const o of voice.oscillators){try{o.stop(t+.55)}catch{}}}
+  setTimeout(()=>{for(const voice of group.voices){for(const n of [...voice.oscillators,...voice.partials,voice.env]){try{n.disconnect()}catch{}}}group.voices.clear();group.bus.disconnect()},650);
+ }
+}
+
 // Interface clicks/hover and background ambience are enabled by default; respect explicit mute choices.
 let siteAudioGeneration=0,siteAudioRequested=true;
 try{siteAudioRequested=localStorage.getItem('ajr-site-audio')!=='off'}catch{}
