@@ -989,3 +989,22 @@ html[data-ajr-theme][data-scene=welcome] .profile>.identity h2{
 #certificate-large.is-pending small{display:none!important}
 #arrival-rocket-audio[hidden]{display:none!important}
 #arrival-rocket-audio:not([hidden]){border-color:#d1a573b0;background:#3a2d20;color:#f5e4cd}
+
+/* V1.2.15 — one three-mode appearance control and button-origin circular reveal. */
+#theme-cycle{background:var(--accent);color:var(--accentink);border-color:var(--accent)}
+#theme-cycle [data-mode-icon]{display:none}
+#theme-cycle[data-theme-mode=dark] [data-mode-icon=dark],
+#theme-cycle[data-theme-mode=light] [data-mode-icon=light],
+#theme-cycle[data-theme-mode=system] [data-mode-icon=system]{display:inline}
+#theme-cycle.theme-pulse svg{animation:bo-theme-button .48s cubic-bezier(.22,.72,.23,1)}
+@keyframes bo-theme-button{0%{transform:scale(.78) rotate(-22deg)}65%{transform:scale(1.15) rotate(7deg)}100%{transform:none}}
+html.theme-revealing,html.theme-revealing *{transition:none!important}
+html.theme-revealing::view-transition-group(root){animation:none}
+html.theme-revealing::view-transition-image-pair(root){isolation:isolate}
+html.theme-revealing::view-transition-old(root){animation:none;mix-blend-mode:normal;z-index:1}
+html.theme-revealing::view-transition-new(root){mix-blend-mode:normal;z-index:2;animation:bo-theme-spread .82s cubic-bezier(.3,.03,.18,1) both}
+@keyframes bo-theme-spread{
+ from{clip-path:circle(0px at var(--theme-reveal-x) var(--theme-reveal-y))}
+ to{clip-path:circle(var(--theme-reveal-radius) at var(--theme-reveal-x) var(--theme-reveal-y))}
+}
+@media(prefers-reduced-motion:reduce){#theme-cycle.theme-pulse svg{animation:none!important}html.theme-revealing::view-transition-new(root){animation:none!important}}

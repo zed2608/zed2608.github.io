@@ -1,5 +1,37 @@
 
-const root=document.documentElement,theme=document.getElementById('theme'),pause=document.getElementById('pause'),media=matchMedia('(prefers-color-scheme:dark)'),reduce=matchMedia('(prefers-reduced-motion:reduce)');theme.value='dark';try{const saved=localStorage.getItem('ajr-bronze-v32-theme');if(['system','dark','light'].includes(saved))theme.value=saved}catch{};function appearance(){const chosen=['dark','light','system'].includes(theme.value)?theme.value:'dark';theme.value=chosen;const actual=chosen==='system'?(media.matches?'dark':'light'):chosen;root.dataset.ajrTheme=actual;root.style.colorScheme=actual;document.querySelector('meta[name="color-scheme"]').content=actual;document.querySelector('meta[name="theme-color"]').content=actual==='dark'?'#0c1118':'#f5f0e7';root.style.removeProperty('background-color');document.body.style.removeProperty('background-color');document.getElementById('theme-actual').textContent='Active appearance: '+actual[0].toUpperCase()+actual.slice(1);document.querySelectorAll('[data-theme-choice]').forEach(b=>{b.setAttribute('aria-pressed',String(b.dataset.themeChoice===chosen));const label=b.dataset.themeChoice==='system'?'Follow system appearance (currently '+actual+')':b.dataset.themeChoice[0].toUpperCase()+b.dataset.themeChoice.slice(1)+' appearance';b.setAttribute('aria-label',label);b.title=label})}theme.addEventListener('change',()=>{appearance();try{localStorage.setItem('ajr-bronze-v32-theme',theme.value)}catch{}});media.addEventListener('change',appearance);document.querySelectorAll('[data-theme-choice]').forEach(b=>b.addEventListener('click',()=>{theme.value=b.dataset.themeChoice;theme.dispatchEvent(new Event('change'))}));function iconLabel(b,label){b.setAttribute('aria-label',label);b.title=label}appearance();const creative=true;root.classList.add('creative-mode');let paused=false;pause.onclick=()=>{paused=!paused;root.classList.toggle('paused',paused);iconLabel(pause,paused?'Resume motion':'Pause motion');pause.setAttribute('aria-pressed',String(paused));draw()};
+const root=document.documentElement,theme=document.getElementById('theme'),pause=document.getElementById('pause'),media=matchMedia('(prefers-color-scheme:dark)'),reduce=matchMedia('(prefers-reduced-motion:reduce)'),themeCycle=document.getElementById('theme-cycle');
+const themeModes=['dark','light','system'];let themeRevealing=false;
+theme.value='dark';try{const saved=localStorage.getItem('ajr-bronze-v32-theme');if(themeModes.includes(saved))theme.value=saved}catch{}
+const themeName=s=>s[0].toUpperCase()+s.slice(1);
+const actualTheme=mode=>mode==='system'?(media.matches?'dark':'light'):mode;
+function appearance(){
+ const chosen=themeModes.includes(theme.value)?theme.value:'dark';theme.value=chosen;const actual=actualTheme(chosen);
+ root.dataset.ajrTheme=actual;root.style.colorScheme=actual;document.querySelector('meta[name="color-scheme"]').content=actual;document.querySelector('meta[name="theme-color"]').content=actual==='dark'?'#0c1118':'#f5f0e7';root.style.removeProperty('background-color');document.body.style.removeProperty('background-color');
+ const next=themeModes[(themeModes.indexOf(chosen)+1)%themeModes.length],label='Appearance: '+themeName(chosen)+(chosen==='system'?' ('+themeName(actual)+')':'')+'. Switch to '+themeName(next);
+ themeCycle.dataset.themeMode=chosen;iconLabel(themeCycle,label);document.getElementById('theme-actual').textContent='Active appearance: '+themeName(chosen)+(chosen==='system'?' ('+themeName(actual)+')':'');
+}
+theme.addEventListener('change',()=>{appearance();try{localStorage.setItem('ajr-bronze-v32-theme',theme.value)}catch{}});
+media.addEventListener('change',appearance);
+function iconLabel(b,label){b.setAttribute('aria-label',label);b.title=label}
+function changeTheme(mode){theme.value=mode;theme.dispatchEvent(new Event('change'))}
+function themeButtonPulse(){
+ if(!motionOK())return;
+ themeCycle.classList.remove('theme-pulse');void themeCycle.offsetWidth;themeCycle.classList.add('theme-pulse');
+ setTimeout(()=>themeCycle.classList.remove('theme-pulse'),520);
+}
+themeCycle.addEventListener('click',()=>{
+ if(themeRevealing)return;
+ const next=themeModes[(themeModes.indexOf(theme.value)+1)%themeModes.length];
+ if(!motionOK()||actualTheme(next)===root.dataset.ajrTheme||typeof document.startViewTransition!=='function'){changeTheme(next);themeButtonPulse();return}
+ const r=themeCycle.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2,radius=Math.hypot(Math.max(x,innerWidth-x),Math.max(y,innerHeight-y))+12;
+ root.style.setProperty('--theme-reveal-x',x+'px');root.style.setProperty('--theme-reveal-y',y+'px');root.style.setProperty('--theme-reveal-radius',radius+'px');root.classList.add('theme-revealing');themeRevealing=true;
+ const cleanup=()=>{root.classList.remove('theme-revealing');for(const p of ['--theme-reveal-x','--theme-reveal-y','--theme-reveal-radius'])root.style.removeProperty(p);themeRevealing=false;themeButtonPulse()};
+ try{
+  const vt=document.startViewTransition(()=>changeTheme(next));
+  vt.ready.catch(()=>{});vt.finished.then(cleanup,()=>{if(theme.value!==next)changeTheme(next);cleanup()});
+ }catch{changeTheme(next);cleanup()}
+});
+appearance();const creative=true;root.classList.add('creative-mode');let paused=false;pause.onclick=()=>{paused=!paused;root.classList.toggle('paused',paused);iconLabel(pause,paused?'Resume motion':'Pause motion');pause.setAttribute('aria-pressed',String(paused));draw()};
 const overview=document.getElementById('overview'),cases=[...document.querySelectorAll('.case')],links=[...document.querySelectorAll('.rail a')];let currentCase=null, currentScene='welcome', sceneBooted=false, dockAnimation=null;
 const sceneIds=['welcome','work','project-index','journey','credentials','about','contact'];
 function placeRail(){const r=document.querySelector('.rail'),a=r.querySelector('a.active');if(!a)return;r.style.setProperty('--rail-x',a.offsetLeft+'px');r.style.setProperty('--rail-y',a.offsetTop+'px');r.style.setProperty('--rail-w',a.offsetWidth+'px');r.style.setProperty('--rail-h',a.offsetHeight+'px');r.style.setProperty('--rail-ready','1')}function active(id){links.forEach(a=>{const on=a.hash==='#'+id;a.classList.toggle('active',on);if(on)a.setAttribute('aria-current','location');else a.removeAttribute('aria-current')});placeRail()}addEventListener('resize',placeRail);
