@@ -1,0 +1,27 @@
+name: Generate portrait derivative
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/upscale_portrait.py'
+      - '.github/workflows/portrait-upscale.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install Pillow==11.3.0
+      - run: python scripts/upscale_portrait.py
+      - name: Export generated public portrait
+        run: |
+          python -c "import base64,pathlib; b=base64.b64encode(pathlib.Path('assets/portrait-upscaled.webp').read_bytes()).decode(); print('PORTRAIT_BASE64_START'); print('\\n'.join(b[i:i+2048] for i in range(0,len(b),2048))); print('PORTRAIT_BASE64_END')"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: portrait-upscaled
+          path: assets/portrait-upscaled.webp
