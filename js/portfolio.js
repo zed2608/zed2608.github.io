@@ -169,11 +169,22 @@ function albumCaption(name,description,changed,previous){const elements=[documen
 function showSlide(n,manual=false){const previous=slideIndex;slideIndex=(n+slides.length)%slides.length;slides.forEach((s,i)=>{s.hidden=false;const offset=(i-slideIndex+slides.length)%slides.length,pos=offset===0?0:offset===1?1:offset===slides.length-1?2:3;s.dataset.slot=String(pos);s.tabIndex=pos===3?-1:0;s.setAttribute('aria-hidden',String(pos===3));s.inert=pos===3;s.setAttribute('aria-label',(pos===0?'Open case study: ':'Bring to center: ')+s.querySelector('strong').textContent);});const count=document.getElementById('gallery-count');count.setAttribute('aria-live',manual?'polite':'off');count.textContent=`${String(slideIndex+1).padStart(2,'0')} / ${String(slides.length).padStart(2,'0')}`;albumCaption(slides[slideIndex].querySelector('strong').textContent,slides[slideIndex].querySelector('small').textContent,previous!==slideIndex,previous); document.getElementById('gallery-open').href=slides[slideIndex].getAttribute('href');document.querySelectorAll('[data-album]').forEach((b,i)=>b.setAttribute('aria-pressed',String(i===slideIndex)));scheduleGallery()}
 function scheduleGallery(){clearTimeout(galleryTimer);if(!galleryPaused&&!paused&&!reduce.matches&&!document.hidden&&!currentCase&&!transitioning&&currentScene==='work'&&galleryVisible&&!galleryHover&&!galleryFocus)galleryTimer=setTimeout(()=>showSlide(slideIndex+1),9000)}
 new IntersectionObserver(entries=>{galleryVisible=entries[0].isIntersecting;scheduleGallery()},{threshold:.25}).observe(gallery);gallery.querySelector('.gallery-controls').addEventListener('pointerenter',()=>{galleryHover=true;scheduleGallery()});gallery.querySelector('.gallery-controls').addEventListener('pointerleave',()=>{galleryHover=false;scheduleGallery()});gallery.addEventListener('focusin',()=>{galleryFocus=true;scheduleGallery()});gallery.addEventListener('focusout',e=>{galleryFocus=gallery.contains(e.relatedTarget);scheduleGallery()});document.getElementById('gallery-prev').onclick=()=>showSlide(slideIndex-1,true);document.getElementById('gallery-next').onclick=()=>showSlide(slideIndex+1,true);galleryPlay.onclick=()=>{galleryPaused=!galleryPaused;galleryPlay.textContent=galleryPaused?'Play':'Pause';galleryPlay.setAttribute('aria-pressed',String(galleryPaused));galleryPlay.setAttribute('aria-label',galleryPaused?'Resume featured photos':'Pause featured photos');scheduleGallery()};pause.addEventListener('click',scheduleGallery);reduce.addEventListener('change',scheduleGallery);document.addEventListener('visibilitychange',scheduleGallery);addEventListener('hashchange',scheduleGallery);
-// Interface and ambient audio are opt-in; pet voices are local audio assets.
+// Both sound groups default to enabled, with browser-policy-aware startup and local pet voices.
 let audio=null,sfx=false,ambience=false,ambientNodes=[],master=null,ambientBus=null,lastHover=0;const soundToggle=document.getElementById('site-sound-toggle'),audioStatus=document.getElementById('audio-status');
-async function ensureAudio(){try{if(!audio){const AC=window.AudioContext||window.webkitAudioContext;if(!AC)throw Error('Unavailable');audio=new AC();master=audio.createGain();master.gain.value=.62;master.connect(audio.destination)}if(audio.state!=='running')await audio.resume();return audio.state==='running'}catch{audioStatus.textContent='Audio is not available in this browser.';return false}}
+async function ensureAudio(){
+ try{
+  if(!audio){
+   const AC=window.AudioContext||window.webkitAudioContext;if(!AC)throw Error('Unavailable');audio=new AC();
+   master=audio.createGain();master.gain.value=.82;
+   const limiter=audio.createDynamicsCompressor();limiter.threshold.value=-8;limiter.knee.value=12;limiter.ratio.value=5;limiter.attack.value=.004;limiter.release.value=.15;master.connect(limiter);limiter.connect(audio.destination);
+   audio.addEventListener('statechange',()=>{syncAudioAvailability();if(audio.state==='running')syncEnabledAudio()});
+  }
+  if(audio.state!=='running')await Promise.race([audio.resume(),new Promise(resolve=>setTimeout(resolve,700))]);
+  syncAudioAvailability();return audio.state==='running';
+ }catch{audioStatus.textContent='Audio is not available in this browser.';return false}
+}
 function tone(kind){if(!sfx||!audio||audio.state!=='running'||document.hidden)return;const now=audio.currentTime,o=audio.createOscillator(),g=audio.createGain();o.type='sine';o.frequency.setValueAtTime(kind==='click'?460:680,now);o.frequency.exponentialRampToValueAtTime(kind==='click'?330:550,now+.085);g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(kind==='click'?.22:.105,now+.012);g.gain.exponentialRampToValueAtTime(.0001,now+.105);o.connect(g);g.connect(master);o.start(now);o.stop(now+.12);o.onended=()=>{o.disconnect();g.disconnect()}}
-function startAmbience(){if(!audio||ambientNodes.length)return;const t=audio.currentTime;ambientBus=audio.createGain();ambientBus.gain.setValueAtTime(0,t);ambientBus.gain.linearRampToValueAtTime(.32,t+1.4);ambientBus.connect(master);for(const [freq,gain,rate] of [[110,.22,.0207],[164.81,.10,.0175],[220,.065,.025]]){const o=audio.createOscillator(),g=audio.createGain(),lfo=audio.createOscillator(),depth=audio.createGain();o.type='sine';o.frequency.value=freq;g.gain.value=gain;lfo.frequency.value=rate;depth.gain.value=gain*.25;lfo.connect(depth);depth.connect(g.gain);o.connect(g);g.connect(ambientBus);o.start(t);lfo.start(t);ambientNodes.push({o,g,lfo,depth})}}
+function startAmbience(){if(!audio||ambientNodes.length)return;const t=audio.currentTime;ambientBus=audio.createGain();ambientBus.gain.setValueAtTime(0,t);ambientBus.gain.linearRampToValueAtTime(.48,t+.65);ambientBus.connect(master);for(const [freq,gain,rate] of [[110,.18,.0207],[164.81,.13,.0175],[220,.12,.025],[329.63,.045,.013]]){const o=audio.createOscillator(),g=audio.createGain(),lfo=audio.createOscillator(),depth=audio.createGain();o.type='sine';o.frequency.value=freq;g.gain.value=gain;lfo.frequency.value=rate;depth.gain.value=gain*.25;lfo.connect(depth);depth.connect(g.gain);o.connect(g);g.connect(ambientBus);o.start(t);lfo.start(t);ambientNodes.push({o,g,lfo,depth})}}
 
 // Original cinematic rocket audio. Browser activation is required before the engine or hover can sound.
 let rocketSounds=true,rocketEngine=null,rocketNoise=null,rocketHoverAt=0;
@@ -181,7 +192,16 @@ try{const saved=localStorage.getItem('ajr-effects-sounds');rocketSounds=saved===
 const effectsSoundToggle=document.getElementById('effects-sound-toggle'),arrivalRocketAudio=document.getElementById('arrival-rocket-audio');
 function syncRocketSound(){
  effectsSoundToggle.setAttribute('aria-pressed',String(rocketSounds));iconLabel(effectsSoundToggle,'Pet and rocket sounds: '+(rocketSounds?'On':'Off'));
- const enabled=rocketSounds&&audio?.state==='running';arrivalRocketAudio.textContent=enabled?'Mute sound effects':'Enable audio';arrivalRocketAudio.setAttribute('aria-label',enabled?'Mute pet and rocket sounds':'Enable audio');
+ syncAudioAvailability();
+}
+function syncAudioAvailability(){
+ const ready=audio?.state==='running',requested=rocketSounds||siteAudioRequested;
+ // The two menu switches remain independent; this arrival control only unlocks audio.
+ arrivalRocketAudio.hidden=!!(ready&&requested);
+ arrivalRocketAudio.textContent='Play with sound';arrivalRocketAudio.setAttribute('aria-label','Play arrival and site audio');
+ root.dataset.audioState=ready?'running':requested?'waiting':'muted';
+ if(requested&&!ready)audioStatus.textContent='Sound enabled. Interact with the page to start audio if your browser blocks autoplay.';
+ else if(ready&&audioStatus.textContent.startsWith('Sound enabled.'))audioStatus.textContent='';
 }
 function rocketNoiseBuffer(){
  if(rocketNoise)return rocketNoise;const buffer=audio.createBuffer(1,Math.floor(audio.sampleRate*2),audio.sampleRate),samples=buffer.getChannelData(0);let low=0;
@@ -200,14 +220,14 @@ function syncRocketEngine(){
  const now=audio.currentTime;
  if(rocketEngine)return;
  const noise=audio.createBufferSource(),filter=audio.createBiquadFilter(),osc=audio.createOscillator(),rumble=audio.createGain(),gain=audio.createGain();
- noise.buffer=rocketNoiseBuffer();noise.loop=true;filter.type='lowpass';filter.frequency.value=850;filter.Q.value=.65;osc.type='sine';osc.frequency.value=92;rumble.gain.value=.15;gain.gain.setValueAtTime(0,now);gain.gain.linearRampToValueAtTime(.31,now+.22);
+ noise.buffer=rocketNoiseBuffer();noise.loop=true;filter.type='lowpass';filter.frequency.value=1450;filter.Q.value=.7;osc.type='triangle';osc.frequency.value=155;rumble.gain.value=.19;gain.gain.setValueAtTime(0,now);gain.gain.linearRampToValueAtTime(.47,now+.12);
  noise.connect(filter);filter.connect(gain);osc.connect(rumble);rumble.connect(gain);gain.connect(master);noise.start(now);osc.start(now);
  rocketEngine={gain,filter,osc,sources:[noise,osc],nodes:[noise,filter,osc,rumble,gain]};
  v26Mark.dataset.engineSound='playing';
 }
 function rocketThrustSound(thrust){
  if(!rocketEngine||!audio||audio.state!=='running')return;const x=Math.max(0,Math.min(1,thrust)),now=audio.currentTime;
- rocketEngine.gain.gain.setTargetAtTime(.065+.25*x,now,.085);rocketEngine.filter.frequency.setTargetAtTime(370+900*x,now,.1);rocketEngine.osc.frequency.setTargetAtTime(68+38*x,now,.1);
+ rocketEngine.gain.gain.setTargetAtTime(.075+.40*x,now,.085);rocketEngine.filter.frequency.setTargetAtTime(490+1250*x,now,.1);rocketEngine.osc.frequency.setTargetAtTime(100+65*x,now,.1);
 }
 async function rocketCue(kind,activate){
  if(!rocketSounds||document.hidden)return;
@@ -231,16 +251,18 @@ async function setEffectsSounds(enabled){
  syncRocketSound();const ok=await ensureAudio();if(generation!==effectsGeneration)return;syncRocketSound();if(ok){syncEnabledAudio();audioStatus.textContent='Pet and rocket sounds enabled.'}else audioStatus.textContent='Pet and rocket sounds enabled; browser audio could not start yet.';
 }
 effectsSoundToggle.onclick=()=>void setEffectsSounds(!rocketSounds);
-arrivalRocketAudio.onclick=()=>void setEffectsSounds(!(rocketSounds&&audio?.state==='running'));
-syncRocketSound();
+arrivalRocketAudio.onclick=()=>{if(!rocketSounds&&!siteAudioRequested){siteAudioRequested=true;try{localStorage.setItem('ajr-site-audio','on')}catch{}syncSiteSound();void setEffectsSounds(true)}else void ensureAudio().then(ok=>{if(ok){syncEnabledAudio();if(siteAudioRequested)tone('click')}})};
 // Unlock enabled audio on the first trusted activation, without overriding browser autoplay policy.
 function unlockDefaultAudio(e){
  if(!e.isTrusted||document.hidden||(!rocketSounds&&!siteAudioRequested)||e.target.closest?.('#site-sound-toggle,#effects-sound-toggle,#arrival-rocket-audio'))return;
  if(audio?.state==='running'){syncEnabledAudio();return}
  void ensureAudio().then(ok=>{if(ok)syncEnabledAudio()});
 }
+document.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse')unlockDefaultAudio(e)},{capture:true,passive:true});
+document.addEventListener('pointerup',e=>{if(e.pointerType!=='mouse')unlockDefaultAudio(e)},{capture:true,passive:true});
+document.addEventListener('touchend',unlockDefaultAudio,{capture:true,passive:true});
 document.addEventListener('click',unlockDefaultAudio,{capture:true});
-document.addEventListener('keydown',e=>{if(['Enter',' ','ArrowDown','ArrowUp','PageDown','PageUp'].includes(e.key))unlockDefaultAudio(e)},{capture:true});
+document.addEventListener('keydown',e=>{if(!['Escape','Shift','Control','Alt','Meta','Tab'].includes(e.key))unlockDefaultAudio(e)},{capture:true});
 new MutationObserver(syncRocketEngine).observe(v26Mark,{attributes:true,attributeFilter:['class']});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stopRocketEngine();else syncRocketEngine()});
 pause.addEventListener('click',syncRocketEngine);reduce.addEventListener('change',syncRocketEngine);
@@ -282,7 +304,7 @@ function petVoice(cat){
 }
 for(const v of Object.values(petVoices))v.addEventListener('ended',()=>{const station=document.getElementById('pet-station');if(!petFallbackNode&&Object.values(petVoices).every(x=>x.paused))station.dataset.soundState='ended'});
 document.addEventListener('visibilitychange',()=>{if(document.hidden){petAudioGeneration++;stopPetVoices()}});
-let lastSync=0;window.syncAmbient=t=>{if(!ambience||!ambientBus||audio.state!=='running'||t-lastSync<.25)return;lastSync=t;ambientBus.gain.setTargetAtTime(.32+.025*Math.sin(t*.13),audio.currentTime,.4)};
+let lastSync=0;window.syncAmbient=t=>{if(!ambience||!ambientBus||audio.state!=='running'||t-lastSync<.25)return;lastSync=t;ambientBus.gain.setTargetAtTime(.48+.035*Math.sin(t*.13),audio.currentTime,.4)};
 function stopAmbience(){if(!ambientNodes.length||!audio)return;const t=audio.currentTime,nodes=ambientNodes,bus=ambientBus;ambientNodes=[];ambientBus=null;bus.gain.cancelScheduledValues(t);bus.gain.setTargetAtTime(0,t,.12);nodes.forEach(({o,lfo})=>{o.stop(t+.55);lfo.stop(t+.55)});setTimeout(()=>{nodes.forEach(({o,g,lfo,depth})=>[o,g,lfo,depth].forEach(n=>n.disconnect()));bus.disconnect()},700)}
 // Interface clicks/hover and background ambience are enabled by default; respect explicit mute choices.
 let siteAudioGeneration=0,siteAudioRequested=true;
@@ -290,7 +312,7 @@ try{siteAudioRequested=localStorage.getItem('ajr-site-audio')!=='off'}catch{}
 function syncSiteSound(){soundToggle.setAttribute('aria-pressed',String(siteAudioRequested));iconLabel(soundToggle,'Interface and ambient sounds: '+(siteAudioRequested?'On':'Off'))}
 soundToggle.onclick=async()=>{
  const generation=++siteAudioGeneration;siteAudioRequested=!siteAudioRequested;try{localStorage.setItem('ajr-site-audio',siteAudioRequested?'on':'off')}catch{}syncSiteSound();
- if(!siteAudioRequested){sfx=ambience=false;stopAmbience();audioStatus.textContent='Interface and ambient sounds muted.';return}
+ if(!siteAudioRequested){sfx=ambience=false;stopAmbience();syncAudioAvailability();audioStatus.textContent='Interface and ambient sounds muted.';return}
  const ok=await ensureAudio();if(generation!==siteAudioGeneration)return;
  if(ok){syncEnabledAudio();tone('click');audioStatus.textContent='Interface and ambient sounds enabled.'}else audioStatus.textContent='Site audio enabled; browser audio could not start yet.';
 };
@@ -298,8 +320,8 @@ function syncEnabledAudio(){
  if(!audio||audio.state!=='running'||document.hidden)return;
  sfx=ambience=siteAudioRequested;if(ambience)startAmbience();else stopAmbience();syncSiteSound();syncRocketSound();syncRocketEngine();
 }
-syncSiteSound();
-document.addEventListener('pointerover',e=>{if(e.pointerType!=='mouse')return;const el=e.target.closest('a,button,summary');if(!el||el.matches('#v26-thread,.pet')||el.contains(e.relatedTarget)||performance.now()-lastHover<140)return;lastHover=performance.now();tone('hover')},{passive:true});document.addEventListener('click',e=>{if(e.target.closest('a,button,summary')&&!e.target.closest('#site-sound-toggle,#effects-sound-toggle,#arrival-rocket-audio,#v26-thread,.pet'))tone('click')});document.addEventListener('visibilitychange',()=>{if(!audio)return;if(document.hidden)audio.suspend().catch(()=>{});else if(siteAudioRequested||rocketSounds)audio.resume().then(()=>{syncEnabledAudio()}).catch(()=>{audioStatus.textContent='Select an audio control to resume sound.'})});
+syncSiteSound();syncRocketSound();
+document.addEventListener('pointerover',e=>{if(e.pointerType!=='mouse')return;const el=e.target.closest('a,button,summary');if(!el||el.matches('#v26-thread,.pet')||el.contains(e.relatedTarget)||performance.now()-lastHover<140)return;lastHover=performance.now();tone('hover')},{passive:true});document.addEventListener('click',e=>{if(!e.target.closest('a,button,summary')||e.target.closest('#site-sound-toggle,#effects-sound-toggle,#arrival-rocket-audio,#v26-thread,.pet')||!siteAudioRequested)return;if(audio?.state==='running'){syncEnabledAudio();tone('click')}else if(e.isTrusted)void ensureAudio().then(ok=>{if(ok){syncEnabledAudio();tone('click')}})});document.addEventListener('visibilitychange',()=>{if(!audio)return;if(document.hidden)audio.suspend().catch(()=>{});else if(siteAudioRequested||rocketSounds)audio.resume().then(()=>{syncEnabledAudio()}).catch(()=>{audioStatus.textContent='Select an audio control to resume sound.'})});
 
 // V9: center sticky profile using actual measured height; keep short viewports scrollable.
 const profile=document.querySelector('.profile');function profileMeasure(){const card=document.querySelector('.profile'),shell=document.querySelector('.shell'),style=getComputedStyle(shell),r=shell.getBoundingClientRect();root.style.setProperty('--profile-height',`${card.offsetHeight}px`);if(innerWidth>760&&!['welcome','contact'].includes(root.dataset.scene)){root.style.setProperty('--dock-left',`${r.left+parseFloat(style.paddingLeft)}px`);const width=parseFloat(style.gridTemplateColumns);if(Number.isFinite(width)&&width>0)root.style.setProperty('--dock-width',`${width}px`)}}new ResizeObserver(profileMeasure).observe(profile);addEventListener('resize',profileMeasure);profileMeasure();
@@ -473,7 +495,9 @@ function maybeFirstArrival(){
  if(!seen&&currentScene==="welcome"&&motionOK())startArrival();
 }
 try{maybeFirstArrival()}finally{root.classList.remove("portfolio-boot","arrival-boot")}
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)maybeFirstArrival()});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){maybeFirstArrival();if(rocketSounds||siteAudioRequested)void ensureAudio().then(ok=>{if(ok)syncEnabledAudio()})}});
+// Try immediately: autoplay-permitted browsers hear the full arrival; blocked browsers retain the visible activation button.
+if(!document.hidden&&(rocketSounds||siteAudioRequested))void ensureAudio().then(ok=>{if(ok)syncEnabledAudio()});
 
 function clearSceneMotion(){if(!motionOK()){clearAlbumCaption();clearTransfer();v26Stop();transitioning=false;v26Place();cancelAnimations(sceneAnimations);cancelAnimations(profileAnimations);if(exitAnimation){exitAnimation.finish()}}}pause.addEventListener('click',clearSceneMotion);reduce.addEventListener('change',clearSceneMotion);
 
@@ -485,7 +509,7 @@ scenes.forEach((wrap,i)=>{const panel=wrap.querySelector('.scene-panel'),btn=pan
 slides.forEach((slide,i)=>slide.addEventListener('click',e=>{if(i!==slideIndex){e.preventDefault();e.stopPropagation();showSlide(i,true);slide.focus({preventScroll:true})}}));gallery.querySelector('.focus-stage').addEventListener('pointerenter',()=>{galleryHover=true;scheduleGallery()});gallery.querySelector('.focus-stage').addEventListener('pointerleave',()=>{galleryHover=false;scheduleGallery()});
 
 const credentialDialog=document.getElementById('credential-detail');let credentialReturn=null;
-function openCredential(i,trigger){const [id,issuer,title,sub,desc,url,color]=credentialData[i];credentialReturn=trigger;document.getElementById('credential-detail-title').textContent=title;document.getElementById('credential-detail-kicker').textContent=sub;document.getElementById('certificate-issuer').textContent=issuer;document.getElementById('certificate-large').className='certificate-large '+color;document.getElementById('credential-detail-copy').textContent=desc;const links=document.getElementById('credential-detail-links');links.replaceChildren();if(url){const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener noreferrer';a.className='btn';a.textContent='Verify credential ↗';links.append(a)}else{const p=document.createElement('p');p.textContent='No external verification link supplied.';links.append(p)}const large=document.getElementById('certificate-large');large.querySelector('img')?.remove();const tile=document.querySelector(`[data-credential="${i}"]`),pending=tile?.dataset.certificatePending==='true';const original=pending?null:tile?.querySelector('.certificate-preview img');large.classList.toggle('is-pending',pending);large.classList.toggle('has-image',!!original);if(original){const photo=original.cloneNode();photo.removeAttribute('loading');large.append(photo)}else{large.querySelector('small').textContent=pending?'Official certificate image pending; recognition reported in résumé.':'Certificate image not supplied.'}credentialDialog.showModal();document.getElementById('credential-detail-close').focus({preventScroll:true});if(motionOK())credentialDialog.animate([{opacity:0,transform:'translateY(16px) scale(.97)'},{opacity:1,transform:'none'}],{duration:650,easing:'cubic-bezier(.22,.75,.2,1)'})}
+function openCredential(i,trigger){const [id,issuer,title,sub,desc,url,color]=credentialData[i];credentialReturn=trigger;document.getElementById('credential-detail-title').textContent=title;document.getElementById('credential-detail-kicker').textContent=sub;document.getElementById('certificate-issuer').textContent=issuer;document.getElementById('certificate-large').className='certificate-large '+color;document.getElementById('credential-detail-copy').textContent=desc;const links=document.getElementById('credential-detail-links');links.replaceChildren();if(url){const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener noreferrer';a.className='btn';a.textContent='Verify credential ↗';links.append(a)}else{const p=document.createElement('p');p.textContent='No external verification link supplied.';links.append(p)}const large=document.getElementById('certificate-large');large.querySelector('img')?.remove();const tile=document.querySelector(`[data-credential="${i}"]`),pending=tile?.dataset.certificatePending==='true';const original=pending?null:tile?.querySelector('.certificate-preview img');large.classList.toggle('is-pending',pending);large.classList.toggle('has-image',!!original);if(original){const photo=original.cloneNode();photo.removeAttribute('loading');large.append(photo)}else{large.querySelector('small').textContent=pending?'':'Certificate image not supplied.'}credentialDialog.showModal();document.getElementById('credential-detail-close').focus({preventScroll:true});if(motionOK())credentialDialog.animate([{opacity:0,transform:'translateY(16px) scale(.97)'},{opacity:1,transform:'none'}],{duration:650,easing:'cubic-bezier(.22,.75,.2,1)'})}
 document.querySelectorAll('[data-credential]').forEach(el=>el.addEventListener('click',()=>openCredential(Number(el.dataset.credential),el)));document.getElementById('credential-detail-close').onclick=()=>credentialDialog.close();credentialDialog.addEventListener('close',()=>credentialReturn?.focus({preventScroll:true}));credentialDialog.addEventListener('click',e=>{if(e.target===credentialDialog){const r=credentialDialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)credentialDialog.close()}});
 function closingState(){document.getElementById('closing-head').setAttribute('aria-hidden',String(root.dataset.scene!=='contact'))}window.addEventListener('scenechange',closingState);closingState();
 // Ensure one-line name fits its real column, including nonstandard screen widths and system fonts.

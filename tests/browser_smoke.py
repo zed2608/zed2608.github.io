@@ -30,7 +30,7 @@ with sync_playwright() as pw:
  p.evaluate("location.hash='work'");p.wait_for_timeout(300);p.locator('[data-album="2"]').click();p.wait_for_timeout(250);assert 'ByteSize' in p.locator('#gallery-name').inner_text();results.append('Album selection')
  p.evaluate("location.hash='project-thesis'");p.wait_for_timeout(300);p.locator('#project-thesis [data-gallery]').first.click();p.wait_for_timeout(150);assert p.locator('#portfolio-lightbox').is_visible();p.locator('#showcase-next').click();assert p.locator('#showcase-count').inner_text().startswith('02');p.locator('#showcase-close').click();results.append('Gallery opens and advances')
  p.evaluate("location.hash='credentials'");p.wait_for_timeout(300);p.locator('#credential-sap-ai').click();assert p.locator('#credential-detail').is_visible();assert p.locator('#certificate-large img').count()==1;p.locator('#credential-detail-close').click();results.append('Certificate detail')
- p.locator('#credential-deans').evaluate("e=>{e.closest('details').open=true}");p.locator('#credential-deans').click();assert p.locator('#certificate-large img').count()==0;assert 'pending' in p.locator('#certificate-large small').inner_text().lower();p.locator('#credential-detail-close').click();results.append('Pending credential contains no portrait or certificate image')
+ p.locator('#credential-deans').evaluate("e=>{e.closest('details').open=true}");p.locator('#credential-deans').click();assert p.locator('#certificate-large img').count()==0;assert p.locator('#certificate-large small').inner_text()=='';assert 'official certificate image pending' not in p.locator('#credential-deans').inner_text().lower();p.locator('#credential-detail-close').click();results.append('Dean’s List contains no portrait, fabricated certificate or pending wording')
  p.evaluate("location.hash='journey'");p.wait_for_timeout(300);p.locator('#journey-1 .chapter-open').click();assert p.locator('#chapter-detail').is_visible();p.locator('#chapter-detail-close').click();results.append('Journey detail')
  for w in [320,390,768,1024]:
   p.set_viewport_size({'width':w,'height':844});p.evaluate("location.hash='welcome'");p.wait_for_timeout(250);assert p.evaluate('document.documentElement.scrollWidth <= innerWidth+2'),w
@@ -68,6 +68,9 @@ with sync_playwright() as pw:
  mp=mobile.new_page();mp.on('pageerror',lambda e:errors.append(str(e)))
  if 'INLINE_PREVIEW' not in os.environ:
   mp.goto(url,wait_until='domcontentloaded');assert mp.locator('#arrival-21').is_visible();assert mp.locator('#v26-thread').count()==1
+  if mp.locator('#arrival-rocket-audio').is_visible(): mp.locator('#arrival-rocket-audio').tap()
+  mp.wait_for_function("document.documentElement.dataset.audioState === 'running' && document.querySelector('#v26-thread').dataset.engineSound === 'playing' && ambientNodes.length > 0")
+  results.append('Arrival engine and ambient audio enabled together on mobile activation')
   mp.wait_for_timeout(10000);assert mp.locator('#arrival-21').is_hidden();assert mp.locator('#welcome').is_visible()
   assert mp.evaluate("document.documentElement.scrollWidth <= innerWidth+2")
   mp.locator('.rail a[href="#work"]').tap();mp.wait_for_timeout(4500);assert mp.locator('#work').is_visible()
