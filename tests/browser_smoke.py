@@ -14,13 +14,15 @@ errors=[];failed=[];results=[]
 with sync_playwright() as pw:
  browser=pw.chromium.launch(executable_path=os.environ.get('CHROMIUM_PATH','/usr/bin/chromium') if Path(os.environ.get('CHROMIUM_PATH','/usr/bin/chromium')).exists() else None,args=['--no-sandbox'])
  context=browser.new_context(viewport={'width':1440,'height':900},reduced_motion='reduce',color_scheme='light');p=context.new_page();p.on('pageerror',lambda e:errors.append(str(e)));p.on('response',lambda r: failed.append(f'{r.status} {r.url}') if r.status>=400 and r.url.startswith(url) else None)
- p.set_content(Path(os.environ['INLINE_PREVIEW']).read_text(),wait_until='load') if 'INLINE_PREVIEW' in os.environ else p.goto(url,wait_until='networkidle');assert p.locator('html').get_attribute('data-ajr-theme')=='dark';p.screenshot(path=output/'home_dark.png');results.append('Dark opens on light-preference browser')
+ p.set_content(Path(os.environ['INLINE_PREVIEW']).read_text(),wait_until='load') if 'INLINE_PREVIEW' in os.environ else p.goto(url,wait_until='networkidle');assert p.locator('html').get_attribute('data-ajr-theme')=='dark';assert p.title()=='QA & Software Developer - Ayzhiedy Reyes';p.screenshot(path=output/'home_dark.png');results.append('Dark opens on light-preference browser')
  p.locator('#menu-trigger').click();p.locator('#theme-cycle').click();assert p.locator('html').get_attribute('data-ajr-theme')=='light';assert p.locator('#theme-cycle').get_attribute('data-theme-mode')=='light';p.locator('#menu-close').click();p.wait_for_timeout(350);p.screenshot(path=output/'home_light.png');p.locator('#menu-trigger').click();p.locator('#theme-cycle').click();assert p.locator('#theme-cycle').get_attribute('data-theme-mode')=='system';assert p.locator('html').get_attribute('data-ajr-theme')=='light';p.locator('#theme-cycle').click();assert p.locator('html').get_attribute('data-ajr-theme')=='dark';p.locator('#menu-close').click();p.wait_for_timeout(350);results.append('Single theme control cycles dark, light, and system')
  assert p.locator('a[aria-label="View public résumé (PDF)"]').count()==2;assert (ROOT/'documents/resume.pdf').is_file();results.append('Public résumé link')
  routes=['work','project-index','journey','credentials','about','contact']+['project-'+x for x in ['thesis','champion','bytesize','lokal','golden','shrms','quizzify','jonas','rps']]
+ titles={'work':'Work','project-index':'All Projects','journey':'Journey','credentials':'Credentials','about':'About','contact':'Contact','project-thesis':'Optimizing Survival','project-champion':'Champion Management System','project-bytesize':'ByteSize','project-lokal':'LokalConnect','project-golden':'The Golden Window','project-shrms':'SHRMS','project-quizzify':'Quizzify','project-jonas':'JonasBytes','project-rps':'Rock Paper Scissors'}
  for r in routes:
   p.evaluate('(r)=>location.hash=r',r);p.wait_for_timeout(350)
   visible=p.locator('#'+r);assert visible.is_visible(),r
+  assert p.title()==titles[r]+' - Ayzhiedy Reyes',(r,p.title())
   assert p.evaluate('document.documentElement.scrollWidth <= innerWidth+2'),r
   imgs=visible.locator('img');
   for i in range(imgs.count()):
@@ -33,7 +35,7 @@ with sync_playwright() as pw:
  p.locator('#credential-deans').evaluate("e=>{e.closest('details').open=true}");p.locator('#credential-deans').click();assert p.locator('#certificate-large img').count()==0;assert p.locator('#certificate-large small').inner_text()=='';assert 'official certificate image pending' not in p.locator('#credential-deans').inner_text().lower();p.locator('#credential-detail-close').click();results.append('Dean’s List contains no portrait, fabricated certificate or pending wording')
  p.evaluate("location.hash='journey'");p.wait_for_timeout(300);p.locator('#journey-1 .chapter-open').click();assert p.locator('#chapter-detail').is_visible();p.locator('#chapter-detail-close').click();results.append('Journey detail')
  for w in [320,390,768,1024]:
-  p.set_viewport_size({'width':w,'height':844});p.evaluate("location.hash='welcome'");p.wait_for_timeout(250);assert p.evaluate('document.documentElement.scrollWidth <= innerWidth+2'),w
+  p.set_viewport_size({'width':w,'height':844});p.evaluate("location.hash='welcome'");p.wait_for_timeout(250);assert p.title()=='QA & Software Developer - Ayzhiedy Reyes';assert p.evaluate('document.documentElement.scrollWidth <= innerWidth+2'),w
   if w==390:p.screenshot(path=output/'mobile.png')
   results.append(f'{w}px home width')
  context.close()
