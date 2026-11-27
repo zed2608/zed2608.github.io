@@ -47,5 +47,15 @@ with sync_playwright() as pw:
  p.set_content(Path(os.environ['INLINE_PREVIEW']).read_text(),wait_until='load') if 'INLINE_PREVIEW' in os.environ else p.goto(url,wait_until='networkidle');p.wait_for_timeout(10000);assert p.locator('#arrival-21').is_hidden();assert p.locator('#v26-thread').count()==1;assert not p.locator('html').evaluate("e=>e.classList.contains('portfolio-boot')");assert p.evaluate("""()=>{const r=document.querySelector('#v26-thread').getBoundingClientRect(),a=document.querySelector('.profile>.comet-home').getBoundingClientRect();return Math.hypot((r.left+r.width/2)-(a.left+a.width/2),(r.top+r.height/2)-(a.top+a.height/2))<2}""");p.evaluate("location.hash='work'");p.wait_for_timeout(4500);assert p.locator('#work').is_visible();p.evaluate("location.hash='welcome'");p.wait_for_timeout(4500);assert p.locator('#welcome').is_visible();results.append('Full-motion arrival and forward/reverse navigation')
  if 'INLINE_PREVIEW' not in os.environ:
   frames=p.evaluate('window.__boInitialFrames');assert frames and all(f['shellHidden'] and f['loaderVisible'] for f in frames),frames;results.append('No portfolio flash before delayed startup')
- browser.close()
+ # A real touch/mobile browser context, not merely a narrow desktop viewport.
+ mobile=browser.new_context(viewport={'width':390,'height':844},is_mobile=True,has_touch=True,device_scale_factor=3,reduced_motion='no-preference')
+ mp=mobile.new_page();mp.on('pageerror',lambda e:errors.append(str(e)))
+ if 'INLINE_PREVIEW' not in os.environ:
+  mp.goto(url,wait_until='domcontentloaded');assert mp.locator('#arrival-21').is_visible();assert mp.locator('#v26-thread').count()==1
+  mp.wait_for_timeout(8500);assert mp.locator('#arrival-21').is_hidden();assert mp.locator('#welcome').is_visible()
+  assert mp.evaluate("document.documentElement.scrollWidth <= innerWidth+2")
+  mp.locator('.rail a[href="#work"]').tap();mp.wait_for_timeout(4500);assert mp.locator('#work').is_visible()
+  mp.locator('.rail a[href="#welcome"]').tap();mp.wait_for_timeout(4500);assert mp.locator('#welcome').is_visible()
+  results.append('Touch/mobile arrival and forward/reverse transitions')
+ mobile.close();browser.close()
 server.shutdown();print(json.dumps({'checks':results,'page_errors':errors,'failed_http':failed},indent=2));assert not errors and not failed
