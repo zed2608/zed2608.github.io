@@ -862,3 +862,46 @@ html[data-ajr-theme="light"] .profile>.portrait{background:radial-gradient(ellip
 .profile>.portrait::before{content:"";position:absolute;inset:8%;border:1px solid rgba(234,195,139,.29);border-radius:50%;transform:rotate(-20deg) scaleY(.7);pointer-events:none;z-index:0}
 .profile>.portrait .formal-portrait{z-index:1;object-fit:contain;object-position:center bottom;width:100%;height:100%;inset:0;filter:none!important;transform-origin:50% 100%;border-radius:0}
 .profile>.portrait .portrait-mark{z-index:2;filter:drop-shadow(0 1px 3px #0008)}
+
+
+/* Bronze Orbit V1.1 — targeted presentation and startup refinements. */
+/* The original cutout is only 294 × 295; avoid stretching it into a tall card. */
+.profile>.portrait .formal-portrait{
+  inset:auto 0 0 50%;width:min(100%,320px);height:100%;max-width:100%;
+  translate:-50% 0;object-fit:contain;object-position:50% 100%;
+  transform-origin:50% 100%;image-rendering:auto;
+}
+.profile>.portrait:hover .formal-portrait{transform:none}
+html[data-scene=welcome] .profile>.portrait .formal-portrait{width:min(100%,320px)}
+html[data-scene=contact] .profile>.portrait .formal-portrait{width:100%}
+html[data-ajr-theme][data-scene=welcome] .profile>.identity h2{
+  margin-top:clamp(6px,1.1vh,12px)!important;line-height:1.22!important;
+  max-width:100%!important;white-space:normal!important;text-wrap:balance!important;
+}
+html[data-scene=welcome] .profile>.identity{min-width:0}
+#credential-deans .certificate-pending,#certificate-large.is-pending{
+  background-image:none!important;background-color:var(--card)!important;
+}
+#credential-deans .certificate-pending{
+  display:grid;place-content:center;justify-items:center;gap:8px;
+  padding:14px!important;text-align:center;min-height:125px;
+}
+#credential-deans .certificate-pending img,#certificate-large.is-pending img{display:none!important}
+#credential-deans .certificate-pending .cert-frame{width:min(100%,145px)}
+#credential-deans .certificate-pending small{font-size:10px;line-height:1.4;color:var(--muted)}
+#v26-thread{backface-visibility:hidden;will-change:transform;transform-origin:center}
+@media(max-width:760px){
+  html[data-ajr-theme][data-scene=welcome] .profile>.identity h2{margin-top:6px!important}
+  #credential-deans .certificate-pending{min-height:100px}
+}
+
+/* Touch devices retain scene transitions, with finger-friendly press feedback. */
+html.arriving #arrival-21{touch-action:none;overscroll-behavior:contain}
+.motion-status{font-size:12px;line-height:1.5;color:var(--muted);margin-top:6px}
+.motion-status:empty{display:none}
+@media(hover:none) and (pointer:coarse){
+ html:not(.paused) .setting-icon:active,html:not(.paused) .scene-controls button:active,
+ html:not(.paused) .credential-tile:active,html:not(.paused) .social a:active,
+ html:not(.paused) .rail a:active{outline:1px solid var(--accent);outline-offset:2px}
+ #arrival-21 .arrival-bottom{padding-bottom:env(safe-area-inset-bottom,0px)}
+}
