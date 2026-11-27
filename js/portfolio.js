@@ -184,10 +184,20 @@ async function ensureAudio(){
  }catch{audioStatus.textContent='Audio is not available in this browser.';return false}
 }
 function tone(kind){if(!sfx||!audio||audio.state!=='running'||document.hidden)return;const now=audio.currentTime,o=audio.createOscillator(),g=audio.createGain();o.type='sine';o.frequency.setValueAtTime(kind==='click'?460:680,now);o.frequency.exponentialRampToValueAtTime(kind==='click'?330:550,now+.085);g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(kind==='click'?.38:.19,now+.012);g.gain.exponentialRampToValueAtTime(.0001,now+.105);o.connect(g);g.connect(master);o.start(now);o.stop(now+.12);o.onended=()=>{o.disconnect();g.disconnect()}}
-function startAmbience(){if(!audio||ambientNodes.length)return;const t=audio.currentTime;ambientBus=audio.createGain();ambientBus.gain.setValueAtTime(0,t);ambientBus.gain.linearRampToValueAtTime(.78,t+.65);ambientBus.connect(master);for(const [freq,gain,rate] of [[110,.18,.0207],[164.81,.16,.0175],[220,.15,.025],[329.63,.085,.013]]){const o=audio.createOscillator(),g=audio.createGain(),lfo=audio.createOscillator(),depth=audio.createGain();o.type='sine';o.frequency.value=freq;g.gain.value=gain;lfo.frequency.value=rate;depth.gain.value=gain*.25;lfo.connect(depth);depth.connect(g.gain);o.connect(g);g.connect(ambientBus);o.start(t);lfo.start(t);ambientNodes.push({o,g,lfo,depth})}}
+// Warm A-major add-nine pad: consonant sustained tones with unhurried breathing.
+function startAmbience(){
+ if(!audio||ambientNodes.length)return;const t=audio.currentTime;
+ ambientBus=audio.createGain();ambientBus.gain.setValueAtTime(0,t);ambientBus.gain.linearRampToValueAtTime(.80,t+1.8);ambientBus.connect(master);
+ const voices=[[110,.17,.034],[164.8138,.14,.047],[220,.13,.025],[277.1826,.085,.031],[329.6276,.095,.041],[493.8833,.045,.023]];
+ for(const [freq,gain,rate] of voices){
+  const o=audio.createOscillator(),g=audio.createGain(),lfo=audio.createOscillator(),depth=audio.createGain();
+  o.type='sine';o.frequency.value=freq;g.gain.value=gain;lfo.frequency.value=rate;depth.gain.value=gain*.17;
+  lfo.connect(depth);depth.connect(g.gain);o.connect(g);g.connect(ambientBus);o.start(t);lfo.start(t);ambientNodes.push({o,g,lfo,depth});
+ }
+}
 
 // Original cinematic rocket audio. Browser activation is required before the engine or hover can sound.
-let rocketSounds=true,rocketEngine=null,rocketNoise=null,rocketHoverAt=0;
+let rocketSounds=true,rocketEngine=null,rocketNoise=null,rocketFlightNoise=null,rocketHoverAt=0;
 try{const saved=localStorage.getItem('ajr-effects-sounds');rocketSounds=saved===null?(localStorage.getItem('ajr-rocket-sounds')!=='off'&&localStorage.getItem('ajr-pet-sounds')!=='off'):saved!=='off'}catch{}
 const effectsSoundToggle=document.getElementById('effects-sound-toggle'),arrivalRocketAudio=document.getElementById('arrival-rocket-audio');
 function syncRocketSound(){
@@ -208,11 +218,20 @@ function rocketNoiseBuffer(){
  for(let i=0;i<samples.length;i++){low=.7*low+.3*(Math.random()*2-1);samples[i]=low}
  rocketNoise=buffer;return buffer;
 }
+// A separate, seamless softly filtered air texture for flight (click cues keep their own noise).
+function rocketFlightBuffer(){
+ if(rocketFlightNoise)return rocketFlightNoise;
+ const len=Math.floor(audio.sampleRate*4),fade=Math.floor(audio.sampleRate*.18),buffer=audio.createBuffer(1,len,audio.sampleRate),out=buffer.getChannelData(0),raw=new Float32Array(len+fade);
+ let low=0,slow=0;
+ for(let i=0;i<raw.length;i++){low=.86*low+.14*(Math.random()*2-1);slow=.78*slow+.22*low;raw[i]=slow*2.1}
+ for(let i=0;i<len;i++){const k=i<fade?i/fade:1;out[i]=i<fade?raw[len+i]*(1-k)+raw[i]*k:raw[i]}
+ rocketFlightNoise=buffer;return buffer;
+}
 function stopRocketEngine(){
  if(!rocketEngine)return;const e=rocketEngine;rocketEngine=null;const now=audio.currentTime;
- e.gain.gain.cancelScheduledValues(now);e.gain.gain.setTargetAtTime(0,now,.065);
- for(const node of e.sources){try{node.stop(now+.27)}catch{}}
- setTimeout(()=>{for(const node of e.nodes){try{node.disconnect()}catch{}}},340);
+ e.gain.gain.cancelScheduledValues(now);e.gain.gain.setTargetAtTime(0,now,.12);
+ for(const node of e.sources){try{node.stop(now+.46)}catch{}}
+ setTimeout(()=>{for(const node of e.nodes){try{node.disconnect()}catch{}}},520);
  if(v26Mark)v26Mark.dataset.engineSound='stopped';
 }
 function syncRocketEngine(){
@@ -220,14 +239,14 @@ function syncRocketEngine(){
  const now=audio.currentTime;
  if(rocketEngine)return;
  const noise=audio.createBufferSource(),filter=audio.createBiquadFilter(),osc=audio.createOscillator(),rumble=audio.createGain(),gain=audio.createGain();
- noise.buffer=rocketNoiseBuffer();noise.loop=true;filter.type='lowpass';filter.frequency.value=1450;filter.Q.value=.7;osc.type='triangle';osc.frequency.value=155;rumble.gain.value=.24;gain.gain.setValueAtTime(0,now);gain.gain.linearRampToValueAtTime(.72,now+.12);
+ noise.buffer=rocketFlightBuffer();noise.loop=true;filter.type='lowpass';filter.frequency.value=760;filter.Q.value=.45;osc.type='sine';osc.frequency.value=146.83;rumble.gain.value=.27;gain.gain.setValueAtTime(0,now);gain.gain.linearRampToValueAtTime(.76,now+.45);
  noise.connect(filter);filter.connect(gain);osc.connect(rumble);rumble.connect(gain);gain.connect(master);noise.start(now);osc.start(now);
  rocketEngine={gain,filter,osc,sources:[noise,osc],nodes:[noise,filter,osc,rumble,gain]};
  v26Mark.dataset.engineSound='playing';
 }
 function rocketThrustSound(thrust){
  if(!rocketEngine||!audio||audio.state!=='running')return;const x=Math.max(0,Math.min(1,thrust)),now=audio.currentTime;
- rocketEngine.gain.gain.setTargetAtTime(.12+.60*x,now,.085);rocketEngine.filter.frequency.setTargetAtTime(490+1250*x,now,.1);rocketEngine.osc.frequency.setTargetAtTime(100+65*x,now,.1);
+ rocketEngine.gain.gain.setTargetAtTime(.12+.64*x,now,.22);rocketEngine.filter.frequency.setTargetAtTime(360+460*x,now,.24);rocketEngine.osc.frequency.setTargetAtTime(110+36.83*x,now,.28);
 }
 async function rocketCue(kind,activate){
  if(!rocketSounds||document.hidden)return;
@@ -310,8 +329,8 @@ function petVoice(cat){
 }
 for(const v of Object.values(petVoices))v.addEventListener('ended',()=>{const station=document.getElementById('pet-station');if(!petFallbackNode&&Object.values(petVoices).every(x=>x.paused))station.dataset.soundState='ended'});
 document.addEventListener('visibilitychange',()=>{if(document.hidden){petAudioGeneration++;stopPetVoices()}});
-let lastSync=0;window.syncAmbient=t=>{if(!ambience||!ambientBus||audio.state!=='running'||t-lastSync<.25)return;lastSync=t;ambientBus.gain.setTargetAtTime(.78+.045*Math.sin(t*.13),audio.currentTime,.4)};
-function stopAmbience(){if(!ambientNodes.length||!audio)return;const t=audio.currentTime,nodes=ambientNodes,bus=ambientBus;ambientNodes=[];ambientBus=null;bus.gain.cancelScheduledValues(t);bus.gain.setTargetAtTime(0,t,.12);nodes.forEach(({o,lfo})=>{o.stop(t+.55);lfo.stop(t+.55)});setTimeout(()=>{nodes.forEach(({o,g,lfo,depth})=>[o,g,lfo,depth].forEach(n=>n.disconnect()));bus.disconnect()},700)}
+let lastSync=0;window.syncAmbient=t=>{if(!ambience||!ambientBus||audio.state!=='running'||t-lastSync<.25)return;lastSync=t;ambientBus.gain.setTargetAtTime(.80+.035*Math.sin(t*.085),audio.currentTime,1.2)};
+function stopAmbience(){if(!ambientNodes.length||!audio)return;const t=audio.currentTime,nodes=ambientNodes,bus=ambientBus;ambientNodes=[];ambientBus=null;bus.gain.cancelScheduledValues(t);bus.gain.setTargetAtTime(0,t,.18);nodes.forEach(({o,lfo})=>{o.stop(t+.75);lfo.stop(t+.75)});setTimeout(()=>{nodes.forEach(({o,g,lfo,depth})=>[o,g,lfo,depth].forEach(n=>n.disconnect()));bus.disconnect()},900)}
 // Interface clicks/hover and background ambience are enabled by default; respect explicit mute choices.
 let siteAudioGeneration=0,siteAudioRequested=true;
 try{siteAudioRequested=localStorage.getItem('ajr-site-audio')!=='off'}catch{}
