@@ -175,16 +175,16 @@ async function ensureAudio(){
  try{
   if(!audio){
    const AC=window.AudioContext||window.webkitAudioContext;if(!AC)throw Error('Unavailable');audio=new AC();
-   master=audio.createGain();master.gain.value=.82;
-   const limiter=audio.createDynamicsCompressor();limiter.threshold.value=-8;limiter.knee.value=12;limiter.ratio.value=5;limiter.attack.value=.004;limiter.release.value=.15;master.connect(limiter);limiter.connect(audio.destination);
+   master=audio.createGain();master.gain.value=1.15;
+   const limiter=audio.createDynamicsCompressor();limiter.threshold.value=-5;limiter.knee.value=6;limiter.ratio.value=12;limiter.attack.value=.004;limiter.release.value=.15;master.connect(limiter);limiter.connect(audio.destination);
    audio.addEventListener('statechange',()=>{syncAudioAvailability();if(audio.state==='running')syncEnabledAudio()});
   }
   if(audio.state!=='running')await Promise.race([audio.resume(),new Promise(resolve=>setTimeout(resolve,700))]);
   syncAudioAvailability();return audio.state==='running';
  }catch{audioStatus.textContent='Audio is not available in this browser.';return false}
 }
-function tone(kind){if(!sfx||!audio||audio.state!=='running'||document.hidden)return;const now=audio.currentTime,o=audio.createOscillator(),g=audio.createGain();o.type='sine';o.frequency.setValueAtTime(kind==='click'?460:680,now);o.frequency.exponentialRampToValueAtTime(kind==='click'?330:550,now+.085);g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(kind==='click'?.22:.105,now+.012);g.gain.exponentialRampToValueAtTime(.0001,now+.105);o.connect(g);g.connect(master);o.start(now);o.stop(now+.12);o.onended=()=>{o.disconnect();g.disconnect()}}
-function startAmbience(){if(!audio||ambientNodes.length)return;const t=audio.currentTime;ambientBus=audio.createGain();ambientBus.gain.setValueAtTime(0,t);ambientBus.gain.linearRampToValueAtTime(.48,t+.65);ambientBus.connect(master);for(const [freq,gain,rate] of [[110,.18,.0207],[164.81,.13,.0175],[220,.12,.025],[329.63,.045,.013]]){const o=audio.createOscillator(),g=audio.createGain(),lfo=audio.createOscillator(),depth=audio.createGain();o.type='sine';o.frequency.value=freq;g.gain.value=gain;lfo.frequency.value=rate;depth.gain.value=gain*.25;lfo.connect(depth);depth.connect(g.gain);o.connect(g);g.connect(ambientBus);o.start(t);lfo.start(t);ambientNodes.push({o,g,lfo,depth})}}
+function tone(kind){if(!sfx||!audio||audio.state!=='running'||document.hidden)return;const now=audio.currentTime,o=audio.createOscillator(),g=audio.createGain();o.type='sine';o.frequency.setValueAtTime(kind==='click'?460:680,now);o.frequency.exponentialRampToValueAtTime(kind==='click'?330:550,now+.085);g.gain.setValueAtTime(.0001,now);g.gain.exponentialRampToValueAtTime(kind==='click'?.38:.19,now+.012);g.gain.exponentialRampToValueAtTime(.0001,now+.105);o.connect(g);g.connect(master);o.start(now);o.stop(now+.12);o.onended=()=>{o.disconnect();g.disconnect()}}
+function startAmbience(){if(!audio||ambientNodes.length)return;const t=audio.currentTime;ambientBus=audio.createGain();ambientBus.gain.setValueAtTime(0,t);ambientBus.gain.linearRampToValueAtTime(.78,t+.65);ambientBus.connect(master);for(const [freq,gain,rate] of [[110,.18,.0207],[164.81,.16,.0175],[220,.15,.025],[329.63,.085,.013]]){const o=audio.createOscillator(),g=audio.createGain(),lfo=audio.createOscillator(),depth=audio.createGain();o.type='sine';o.frequency.value=freq;g.gain.value=gain;lfo.frequency.value=rate;depth.gain.value=gain*.25;lfo.connect(depth);depth.connect(g.gain);o.connect(g);g.connect(ambientBus);o.start(t);lfo.start(t);ambientNodes.push({o,g,lfo,depth})}}
 
 // Original cinematic rocket audio. Browser activation is required before the engine or hover can sound.
 let rocketSounds=true,rocketEngine=null,rocketNoise=null,rocketHoverAt=0;
@@ -220,14 +220,14 @@ function syncRocketEngine(){
  const now=audio.currentTime;
  if(rocketEngine)return;
  const noise=audio.createBufferSource(),filter=audio.createBiquadFilter(),osc=audio.createOscillator(),rumble=audio.createGain(),gain=audio.createGain();
- noise.buffer=rocketNoiseBuffer();noise.loop=true;filter.type='lowpass';filter.frequency.value=1450;filter.Q.value=.7;osc.type='triangle';osc.frequency.value=155;rumble.gain.value=.19;gain.gain.setValueAtTime(0,now);gain.gain.linearRampToValueAtTime(.47,now+.12);
+ noise.buffer=rocketNoiseBuffer();noise.loop=true;filter.type='lowpass';filter.frequency.value=1450;filter.Q.value=.7;osc.type='triangle';osc.frequency.value=155;rumble.gain.value=.24;gain.gain.setValueAtTime(0,now);gain.gain.linearRampToValueAtTime(.72,now+.12);
  noise.connect(filter);filter.connect(gain);osc.connect(rumble);rumble.connect(gain);gain.connect(master);noise.start(now);osc.start(now);
  rocketEngine={gain,filter,osc,sources:[noise,osc],nodes:[noise,filter,osc,rumble,gain]};
  v26Mark.dataset.engineSound='playing';
 }
 function rocketThrustSound(thrust){
  if(!rocketEngine||!audio||audio.state!=='running')return;const x=Math.max(0,Math.min(1,thrust)),now=audio.currentTime;
- rocketEngine.gain.gain.setTargetAtTime(.075+.40*x,now,.085);rocketEngine.filter.frequency.setTargetAtTime(490+1250*x,now,.1);rocketEngine.osc.frequency.setTargetAtTime(100+65*x,now,.1);
+ rocketEngine.gain.gain.setTargetAtTime(.12+.60*x,now,.085);rocketEngine.filter.frequency.setTargetAtTime(490+1250*x,now,.1);rocketEngine.osc.frequency.setTargetAtTime(100+65*x,now,.1);
 }
 async function rocketCue(kind,activate){
  if(!rocketSounds||document.hidden)return;
@@ -236,9 +236,9 @@ async function rocketCue(kind,activate){
  const stamp=performance.now();if(kind==='hover'&&stamp-rocketHoverAt<280)return;if(kind==='hover')rocketHoverAt=stamp;
  const now=audio.currentTime,len=kind==='click'?.49:.19,o=audio.createOscillator(),g=audio.createGain(),filter=audio.createBiquadFilter(),noise=audio.createBufferSource(),ng=audio.createGain();
  o.type='sine';o.frequency.setValueAtTime(kind==='click'?180:610,now);o.frequency.exponentialRampToValueAtTime(kind==='click'?560:880,now+len*.35);o.frequency.exponentialRampToValueAtTime(kind==='click'?95:420,now+len);
- g.gain.setValueAtTime(.0001,now);g.gain.linearRampToValueAtTime(kind==='click'?.24:.13,now+.025);g.gain.exponentialRampToValueAtTime(.0001,now+len);
+ g.gain.setValueAtTime(.0001,now);g.gain.linearRampToValueAtTime(kind==='click'?.38:.22,now+.025);g.gain.exponentialRampToValueAtTime(.0001,now+len);
  noise.buffer=rocketNoiseBuffer();filter.type='bandpass';filter.frequency.setValueAtTime(kind==='click'?1200:1700,now);filter.frequency.exponentialRampToValueAtTime(320,now+len);filter.Q.value=.8;
- ng.gain.setValueAtTime(.0001,now);ng.gain.linearRampToValueAtTime(kind==='click'?.40:.15,now+.025);ng.gain.exponentialRampToValueAtTime(.0001,now+len);
+ ng.gain.setValueAtTime(.0001,now);ng.gain.linearRampToValueAtTime(kind==='click'?.58:.25,now+.025);ng.gain.exponentialRampToValueAtTime(.0001,now+len);
  o.connect(g);g.connect(master);noise.connect(filter);filter.connect(ng);ng.connect(master);o.start(now);noise.start(now);o.stop(now+len+.025);noise.stop(now+len+.025);
  o.onended=()=>{for(const n of [o,g,noise,filter,ng])n.disconnect()};v26Mark.dataset.lastRocketSound=kind;
 }
@@ -291,7 +291,7 @@ function petVoice(cat){
    if(!petBuffers[kind]){const bytes=await petBytes[kind];if(!bytes)throw Error('No audio');petBuffers[kind]=await audio.decodeAudioData(bytes.slice(0))}
    if(generation!==petAudioGeneration||!petSounds||document.hidden)return;
    const src=audio.createBufferSource(),gain=audio.createGain(),limiter=audio.createDynamicsCompressor();
-   src.buffer=petBuffers[kind];gain.gain.value=1.35;limiter.threshold.value=-12;limiter.ratio.value=8;
+   src.buffer=petBuffers[kind];gain.gain.value=1.4;limiter.threshold.value=-5;limiter.knee.value=5;limiter.ratio.value=10;
    src.connect(gain);gain.connect(limiter);limiter.connect(audio.destination);petFallbackNode=src;petFallbackGain=gain;
    src.onended=()=>{src.disconnect();gain.disconnect();limiter.disconnect();if(petFallbackNode===src){petFallbackNode=null;petFallbackGain=null;station.dataset.soundState='ended'}};
    src.start();station.dataset.soundState='playing';station.dataset.lastSound=kind;station.dataset.soundBackend='webaudio';audioStatus.textContent='';
@@ -304,7 +304,7 @@ function petVoice(cat){
 }
 for(const v of Object.values(petVoices))v.addEventListener('ended',()=>{const station=document.getElementById('pet-station');if(!petFallbackNode&&Object.values(petVoices).every(x=>x.paused))station.dataset.soundState='ended'});
 document.addEventListener('visibilitychange',()=>{if(document.hidden){petAudioGeneration++;stopPetVoices()}});
-let lastSync=0;window.syncAmbient=t=>{if(!ambience||!ambientBus||audio.state!=='running'||t-lastSync<.25)return;lastSync=t;ambientBus.gain.setTargetAtTime(.48+.035*Math.sin(t*.13),audio.currentTime,.4)};
+let lastSync=0;window.syncAmbient=t=>{if(!ambience||!ambientBus||audio.state!=='running'||t-lastSync<.25)return;lastSync=t;ambientBus.gain.setTargetAtTime(.78+.045*Math.sin(t*.13),audio.currentTime,.4)};
 function stopAmbience(){if(!ambientNodes.length||!audio)return;const t=audio.currentTime,nodes=ambientNodes,bus=ambientBus;ambientNodes=[];ambientBus=null;bus.gain.cancelScheduledValues(t);bus.gain.setTargetAtTime(0,t,.12);nodes.forEach(({o,lfo})=>{o.stop(t+.55);lfo.stop(t+.55)});setTimeout(()=>{nodes.forEach(({o,g,lfo,depth})=>[o,g,lfo,depth].forEach(n=>n.disconnect()));bus.disconnect()},700)}
 // Interface clicks/hover and background ambience are enabled by default; respect explicit mute choices.
 let siteAudioGeneration=0,siteAudioRequested=true;
