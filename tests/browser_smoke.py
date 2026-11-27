@@ -52,6 +52,7 @@ with sync_playwright() as pw:
  p.locator('#menu-trigger').click()
  assert p.locator('#creative-toggle,#pet-sound-toggle,#rocket-sound-toggle,#sound-toggle,#ambience-toggle').count()==0
  assert p.locator('#effects-sound-toggle,#site-sound-toggle').count()==2
+ assert p.evaluate("creative && document.documentElement.classList.contains('creative-mode')")
  p.locator('#effects-sound-toggle').click();assert p.locator('#effects-sound-toggle').get_attribute('aria-pressed')=='false';assert p.evaluate('!petSounds && !rocketSounds')
  p.locator('#site-sound-toggle').click();p.wait_for_function('sfx && ambience && ambientNodes.length > 0');assert p.locator('#site-sound-toggle').get_attribute('aria-pressed')=='true';assert p.evaluate('!petSounds && !rocketSounds')
  p.locator('#effects-sound-toggle').click();p.wait_for_function('petSounds && rocketSounds');assert p.locator('#effects-sound-toggle').get_attribute('aria-pressed')=='true'
