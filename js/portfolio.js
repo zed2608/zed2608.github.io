@@ -181,7 +181,7 @@ try{const saved=localStorage.getItem('ajr-effects-sounds');rocketSounds=saved===
 const effectsSoundToggle=document.getElementById('effects-sound-toggle'),arrivalRocketAudio=document.getElementById('arrival-rocket-audio');
 function syncRocketSound(){
  effectsSoundToggle.setAttribute('aria-pressed',String(rocketSounds));iconLabel(effectsSoundToggle,'Pet and rocket sounds: '+(rocketSounds?'On':'Off'));
- const enabled=rocketSounds&&audio?.state==='running';arrivalRocketAudio.textContent=enabled?'Mute sound effects':'Enable sound effects';arrivalRocketAudio.setAttribute('aria-label',enabled?'Mute pet and rocket sounds':'Enable pet and rocket sounds');
+ const enabled=rocketSounds&&audio?.state==='running';arrivalRocketAudio.textContent=enabled?'Mute sound effects':'Enable audio';arrivalRocketAudio.setAttribute('aria-label',enabled?'Mute pet and rocket sounds':'Enable audio');
 }
 function rocketNoiseBuffer(){
  if(rocketNoise)return rocketNoise;const buffer=audio.createBuffer(1,Math.floor(audio.sampleRate*2),audio.sampleRate),samples=buffer.getChannelData(0);let low=0;
@@ -228,16 +228,19 @@ async function setEffectsSounds(enabled){
  const generation=++effectsGeneration;rocketSounds=petSounds=enabled;
  try{localStorage.setItem('ajr-effects-sounds',enabled?'on':'off');localStorage.setItem('ajr-pet-sounds',enabled?'on':'off');localStorage.setItem('ajr-rocket-sounds',enabled?'on':'off')}catch{}
  if(!enabled){petAudioGeneration++;stopPetVoices();stopRocketEngine();syncRocketSound();audioStatus.textContent='Pet and rocket sounds muted.';return}
- syncRocketSound();const ok=await ensureAudio();if(generation!==effectsGeneration)return;syncRocketSound();if(ok){syncRocketEngine();audioStatus.textContent='Pet and rocket sounds enabled.'}else audioStatus.textContent='Pet and rocket sounds enabled; browser audio could not start yet.';
+ syncRocketSound();const ok=await ensureAudio();if(generation!==effectsGeneration)return;syncRocketSound();if(ok){syncEnabledAudio();audioStatus.textContent='Pet and rocket sounds enabled.'}else audioStatus.textContent='Pet and rocket sounds enabled; browser audio could not start yet.';
 }
 effectsSoundToggle.onclick=()=>void setEffectsSounds(!rocketSounds);
 arrivalRocketAudio.onclick=()=>void setEffectsSounds(!(rocketSounds&&audio?.state==='running'));
 syncRocketSound();
-// First trusted click (including a menu navigation or Replay Introduction) unlocks sound; no forced autoplay.
-document.addEventListener('click',e=>{
- if(!e.isTrusted||!rocketSounds||audio?.state==='running'||e.target.closest('#effects-sound-toggle,#arrival-rocket-audio'))return;
- void ensureAudio().then(ok=>{if(ok){syncRocketSound();syncRocketEngine()}});
-},{capture:true});
+// Unlock enabled audio on the first trusted activation, without overriding browser autoplay policy.
+function unlockDefaultAudio(e){
+ if(!e.isTrusted||document.hidden||(!rocketSounds&&!siteAudioRequested)||e.target.closest?.('#site-sound-toggle,#effects-sound-toggle,#arrival-rocket-audio'))return;
+ if(audio?.state==='running'){syncEnabledAudio();return}
+ void ensureAudio().then(ok=>{if(ok)syncEnabledAudio()});
+}
+document.addEventListener('click',unlockDefaultAudio,{capture:true});
+document.addEventListener('keydown',e=>{if(['Enter',' ','ArrowDown','ArrowUp','PageDown','PageUp'].includes(e.key))unlockDefaultAudio(e)},{capture:true});
 new MutationObserver(syncRocketEngine).observe(v26Mark,{attributes:true,attributeFilter:['class']});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)stopRocketEngine();else syncRocketEngine()});
 pause.addEventListener('click',syncRocketEngine);reduce.addEventListener('change',syncRocketEngine);
@@ -281,17 +284,22 @@ for(const v of Object.values(petVoices))v.addEventListener('ended',()=>{const st
 document.addEventListener('visibilitychange',()=>{if(document.hidden){petAudioGeneration++;stopPetVoices()}});
 let lastSync=0;window.syncAmbient=t=>{if(!ambience||!ambientBus||audio.state!=='running'||t-lastSync<.25)return;lastSync=t;ambientBus.gain.setTargetAtTime(.32+.025*Math.sin(t*.13),audio.currentTime,.4)};
 function stopAmbience(){if(!ambientNodes.length||!audio)return;const t=audio.currentTime,nodes=ambientNodes,bus=ambientBus;ambientNodes=[];ambientBus=null;bus.gain.cancelScheduledValues(t);bus.gain.setTargetAtTime(0,t,.12);nodes.forEach(({o,lfo})=>{o.stop(t+.55);lfo.stop(t+.55)});setTimeout(()=>{nodes.forEach(({o,g,lfo,depth})=>[o,g,lfo,depth].forEach(n=>n.disconnect()));bus.disconnect()},700)}
-// Interface clicks/hover and background ambience share one opt-in switch.
-let siteAudioGeneration=0,siteAudioRequested=false;
+// Interface clicks/hover and background ambience are enabled by default; respect explicit mute choices.
+let siteAudioGeneration=0,siteAudioRequested=true;
+try{siteAudioRequested=localStorage.getItem('ajr-site-audio')!=='off'}catch{}
 function syncSiteSound(){soundToggle.setAttribute('aria-pressed',String(siteAudioRequested));iconLabel(soundToggle,'Interface and ambient sounds: '+(siteAudioRequested?'On':'Off'))}
 soundToggle.onclick=async()=>{
- const generation=++siteAudioGeneration;siteAudioRequested=!siteAudioRequested;syncSiteSound();
+ const generation=++siteAudioGeneration;siteAudioRequested=!siteAudioRequested;try{localStorage.setItem('ajr-site-audio',siteAudioRequested?'on':'off')}catch{}syncSiteSound();
  if(!siteAudioRequested){sfx=ambience=false;stopAmbience();audioStatus.textContent='Interface and ambient sounds muted.';return}
  const ok=await ensureAudio();if(generation!==siteAudioGeneration)return;
- if(ok){sfx=ambience=true;startAmbience();tone('click');audioStatus.textContent='Interface and ambient sounds enabled.'}else{siteAudioRequested=false;syncSiteSound();audioStatus.textContent='Browser audio could not start.'}
+ if(ok){syncEnabledAudio();tone('click');audioStatus.textContent='Interface and ambient sounds enabled.'}else audioStatus.textContent='Site audio enabled; browser audio could not start yet.';
 };
+function syncEnabledAudio(){
+ if(!audio||audio.state!=='running'||document.hidden)return;
+ sfx=ambience=siteAudioRequested;if(ambience)startAmbience();else stopAmbience();syncSiteSound();syncRocketSound();syncRocketEngine();
+}
 syncSiteSound();
-document.addEventListener('pointerover',e=>{if(e.pointerType!=='mouse')return;const el=e.target.closest('a,button,summary');if(!el||el.matches('#v26-thread,.pet')||el.contains(e.relatedTarget)||performance.now()-lastHover<140)return;lastHover=performance.now();tone('hover')},{passive:true});document.addEventListener('click',e=>{if(e.target.closest('a,button,summary')&&!e.target.closest('#site-sound-toggle,#effects-sound-toggle,#arrival-rocket-audio,#v26-thread,.pet'))tone('click')});document.addEventListener('visibilitychange',()=>{if(!audio)return;if(document.hidden)audio.suspend().catch(()=>{});else if(sfx||ambience||rocketSounds)audio.resume().then(()=>{syncRocketSound();syncRocketEngine()}).catch(()=>{audioStatus.textContent='Select an audio control to resume sound.'})});
+document.addEventListener('pointerover',e=>{if(e.pointerType!=='mouse')return;const el=e.target.closest('a,button,summary');if(!el||el.matches('#v26-thread,.pet')||el.contains(e.relatedTarget)||performance.now()-lastHover<140)return;lastHover=performance.now();tone('hover')},{passive:true});document.addEventListener('click',e=>{if(e.target.closest('a,button,summary')&&!e.target.closest('#site-sound-toggle,#effects-sound-toggle,#arrival-rocket-audio,#v26-thread,.pet'))tone('click')});document.addEventListener('visibilitychange',()=>{if(!audio)return;if(document.hidden)audio.suspend().catch(()=>{});else if(siteAudioRequested||rocketSounds)audio.resume().then(()=>{syncEnabledAudio()}).catch(()=>{audioStatus.textContent='Select an audio control to resume sound.'})});
 
 // V9: center sticky profile using actual measured height; keep short viewports scrollable.
 const profile=document.querySelector('.profile');function profileMeasure(){const card=document.querySelector('.profile'),shell=document.querySelector('.shell'),style=getComputedStyle(shell),r=shell.getBoundingClientRect();root.style.setProperty('--profile-height',`${card.offsetHeight}px`);if(innerWidth>760&&!['welcome','contact'].includes(root.dataset.scene)){root.style.setProperty('--dock-left',`${r.left+parseFloat(style.paddingLeft)}px`);const width=parseFloat(style.gridTemplateColumns);if(Number.isFinite(width)&&width>0)root.style.setProperty('--dock-width',`${width}px`)}}new ResizeObserver(profileMeasure).observe(profile);addEventListener('resize',profileMeasure);profileMeasure();
