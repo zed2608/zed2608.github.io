@@ -49,6 +49,14 @@ with sync_playwright() as pw:
  p.evaluate("location.hash='welcome'");p.wait_for_timeout(4500);p.locator('#menu-trigger').click();p.locator('#theme-light').click();p.locator('#menu-close').click();p.wait_for_timeout(350);p.locator('.profile').hover();p.wait_for_timeout(500);assert p.locator('.profile').evaluate("e=>getComputedStyle(e,'::before').opacity")=='1';results.append('Light profile hover effect')
  p.locator('.pet-cat').click();assert 'Meow!' in p.locator('#pet-status').inner_text();p.wait_for_function("(document.querySelector('#cat-voice').currentTime > .04 || document.querySelector('#pet-station').dataset.soundBackend === 'webaudio') && document.querySelector('#pet-station').dataset.lastSound === 'cat'");p.wait_for_timeout(900);p.locator('.pet-dog').click();assert 'Woof!' in p.locator('#pet-status').inner_text();p.wait_for_function("(document.querySelector('#dog-voice').currentTime > .04 || document.querySelector('#pet-station').dataset.soundBackend === 'webaudio') && document.querySelector('#pet-station').dataset.lastSound === 'dog'");results.append('Both pet audio assets play after desktop clicks')
  p.wait_for_timeout(900);p.evaluate("document.querySelector('#cat-voice').play=()=>Promise.reject(new Error('simulated media block'))");p.locator('.pet-cat').click();p.wait_for_function("document.querySelector('#pet-station').dataset.soundBackend === 'webaudio' && document.querySelector('#pet-station').dataset.lastSound === 'cat'");results.append('Pet Web Audio fallback after blocked media')
+ p.locator('#menu-trigger').click()
+ assert p.locator('#creative-toggle,#pet-sound-toggle,#rocket-sound-toggle,#sound-toggle,#ambience-toggle').count()==0
+ assert p.locator('#effects-sound-toggle,#site-sound-toggle').count()==2
+ p.locator('#effects-sound-toggle').click();assert p.locator('#effects-sound-toggle').get_attribute('aria-pressed')=='false';assert p.evaluate('!petSounds && !rocketSounds')
+ p.locator('#site-sound-toggle').click();p.wait_for_function('sfx && ambience && ambientNodes.length > 0');assert p.locator('#site-sound-toggle').get_attribute('aria-pressed')=='true';assert p.evaluate('!petSounds && !rocketSounds')
+ p.locator('#effects-sound-toggle').click();p.wait_for_function('petSounds && rocketSounds');assert p.locator('#effects-sound-toggle').get_attribute('aria-pressed')=='true'
+ p.locator('#site-sound-toggle').click();assert p.evaluate('!sfx && !ambience && ambientNodes.length === 0 && petSounds && rocketSounds')
+ p.locator('#menu-close').click();results.append('Two independent grouped sound controls; creative toggle removed')
  if 'INLINE_PREVIEW' not in os.environ:
   frames=p.evaluate('window.__boInitialFrames');assert frames and all(f['shellHidden'] and f['loaderVisible'] for f in frames),frames;results.append('No portfolio flash before delayed startup')
  # A real touch/mobile browser context, not merely a narrow desktop viewport.
