@@ -37,7 +37,6 @@ function v26Init(){
  let pulseTimer=0;
  el.addEventListener('click',()=>{
   if(el.disabled||!el.dataset.docked)return;
-  if(sfx)tone('click');
   if(!motionOK())return;
   clearTimeout(pulseTimer);el.classList.remove('dock-pulse');void el.offsetWidth;el.classList.add('dock-pulse');
   pulseTimer=setTimeout(()=>el.classList.remove('dock-pulse'),850);
@@ -390,25 +389,3 @@ const name29=document.getElementById('profile-name');function fitName29(){if(roo
 
 // V42: real project views, one accessible gallery dialog with reversible direction.
 (()=>{const dialog=document.getElementById('portfolio-lightbox'),image=document.getElementById('showcase-image'),title=document.getElementById('showcase-title'),count=document.getElementById('showcase-count'),caption=document.getElementById('showcase-caption'),prev=document.getElementById('showcase-prev'),next=document.getElementById('showcase-next');let items=[],index=0,returnTo=null,anim=null;function render(dir=0){const item=items[index],thumb=item.querySelector('img');anim?.cancel();image.src=thumb.src;image.alt=thumb.alt;title.textContent=thumb.alt;count.textContent=String(index+1).padStart(2,'0')+' / '+String(items.length).padStart(2,'0');caption.textContent=thumb.alt;prev.disabled=index===0;next.disabled=index===items.length-1;if(motionOK())anim=image.animate([{opacity:.15,transform:`translateX(${dir*18}px) scale(.985)`},{opacity:1,transform:'none'}],{duration:650,easing:'cubic-bezier(.22,.7,.22,1)'})}function step(dir){const n=index+dir;if(n>=0&&n<items.length){index=n;render(dir)}}document.querySelectorAll('[data-gallery]').forEach(b=>b.addEventListener('click',()=>{returnTo=b;items=[...document.querySelectorAll(`[data-gallery="${b.dataset.gallery}"]`)];index=Number(b.dataset.image);render();dialog.showModal();if(motionOK())dialog.animate([{opacity:0,transform:'translateY(12px) scale(.96)'},{opacity:1,transform:'none'}],{duration:680,easing:'cubic-bezier(.22,.75,.2,1)'});document.getElementById('showcase-close').focus({preventScroll:true})}));prev.onclick=()=>step(-1);next.onclick=()=>step(1);document.getElementById('showcase-close').onclick=()=>dialog.close();dialog.addEventListener('keydown',e=>{if(e.key==='ArrowRight'||e.key==='ArrowLeft'){e.preventDefault();step(e.key==='ArrowRight'?1:-1)}});dialog.addEventListener('close',()=>{anim?.cancel();returnTo?.focus({preventScroll:true})});dialog.addEventListener('click',e=>{if(e.target===dialog){const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close()}});})();
-
-// Three-times raster enhancement of the original transparent portrait, without generative facial changes.
-// Canvas interpolation and a conservative luminance sharpening pass preserve its alpha silhouette.
-(async()=>{
- const img=document.querySelector('.profile .formal-portrait');if(!img)return;
- try{
-  await img.decode();if(img.naturalWidth>=880)return;
-  const canvas=document.createElement('canvas');canvas.width=img.naturalWidth*3;canvas.height=img.naturalHeight*3;
-  const ctx=canvas.getContext('2d',{willReadFrequently:true});if(!ctx)return;
-  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';ctx.drawImage(img,0,0,canvas.width,canvas.height);
-  const frame=ctx.getImageData(0,0,canvas.width,canvas.height),a=frame.data,src=new Uint8ClampedArray(a),stride=canvas.width*4;
-  const lum=i=>src[i]*.2126+src[i+1]*.7152+src[i+2]*.0722;
-  for(let y=2;y<canvas.height-2;y++)for(let x=2;x<canvas.width-2;x++){
-   const i=(y*canvas.width+x)*4,n=[i-8,i+8,i-2*stride,i+2*stride];if(src[i+3]<247||n.some(k=>src[k+3]<247))continue;
-   const delta=lum(i)-n.reduce((sum,k)=>sum+lum(k),0)/4;if(Math.abs(delta)<1.8)continue;
-   const amount=Math.max(-12,Math.min(12,delta*.52));for(let k=0;k<3;k++)a[i+k]=src[i+k]+amount;
-  }
-  ctx.putImageData(frame,0,0);const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));if(!blob)return;
-  const url=URL.createObjectURL(blob),probe=new Image();probe.src=url;try{await probe.decode()}catch{URL.revokeObjectURL(url);return}
-  img.src=url;img.width=canvas.width;img.height=canvas.height;img.dataset.enhanced='3x';
- }catch{/* The original remains available if enhancement is unsupported. */}
-})();
