@@ -68,7 +68,7 @@ with sync_playwright() as pw:
  mp=mobile.new_page();mp.on('pageerror',lambda e:errors.append(str(e)))
  if 'INLINE_PREVIEW' not in os.environ:
   mp.goto(url,wait_until='domcontentloaded');assert mp.locator('#arrival-21').is_visible();assert mp.locator('#v26-thread').count()==1
-  if mp.locator('#arrival-rocket-audio').is_visible(): mp.locator('#arrival-rocket-audio').tap()
+  if mp.locator('#arrival-rocket-audio').get_attribute('aria-label')=='Play arrival and site audio': mp.locator('#arrival-rocket-audio').tap()
   mp.wait_for_function("document.documentElement.dataset.audioState === 'running' && document.querySelector('#v26-thread').dataset.engineSound === 'playing' && ambientNodes.length > 0")
   results.append('Arrival engine and ambient audio enabled together on mobile activation')
   mp.wait_for_timeout(10000);assert mp.locator('#arrival-21').is_hidden();assert mp.locator('#welcome').is_visible()
@@ -78,4 +78,10 @@ with sync_playwright() as pw:
   mp.locator('.pet-cat').tap();mp.wait_for_function("(document.querySelector('#cat-voice').currentTime > .04 || document.querySelector('#pet-station').dataset.soundBackend === 'webaudio') && document.querySelector('#pet-station').dataset.lastSound === 'cat'")
   results.append('Touch/mobile arrival, forward/reverse transitions and pet audio playback')
  mobile.close();browser.close()
+ if 'INLINE_PREVIEW' not in os.environ:
+  autoplay_browser=pw.chromium.launch(executable_path=os.environ.get('CHROMIUM_PATH','/usr/bin/chromium') if Path(os.environ.get('CHROMIUM_PATH','/usr/bin/chromium')).exists() else None,args=['--no-sandbox','--autoplay-policy=no-user-gesture-required'])
+  ap=autoplay_browser.new_page();ap.on('pageerror',lambda e:errors.append(str(e)));ap.goto(url,wait_until='domcontentloaded')
+  ap.wait_for_function("document.documentElement.dataset.audioState==='running' && document.querySelector('#v26-thread').dataset.engineSound==='playing' && ambientNodes.length>0")
+  ap.wait_for_function("document.documentElement.dataset.openingSound==='playing' || document.documentElement.dataset.openingSound==='ended'")
+  assert ap.locator('#arrival-rocket-audio').get_attribute('aria-label')=='Mute all audio';autoplay_browser.close();results.append('Autoplay-permitted browser starts opening cue, engine and ambience without interaction')
 server.shutdown();print(json.dumps({'checks':results,'page_errors':errors,'failed_http':failed},indent=2));assert not errors and not failed
