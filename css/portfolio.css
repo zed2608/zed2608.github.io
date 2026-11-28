@@ -1008,3 +1008,13 @@ html.theme-revealing::view-transition-new(root){mix-blend-mode:normal;z-index:2;
  to{clip-path:circle(var(--theme-reveal-radius) at var(--theme-reveal-x) var(--theme-reveal-y))}
 }
 @media(prefers-reduced-motion:reduce){#theme-cycle.theme-pulse svg{animation:none!important}html.theme-revealing::view-transition-new(root){animation:none!important}}
+
+/* V1.2.17 — optional visual companions, independent live-space control, concise identity. */
+html.companions-off:not(.arriving) #v26-thread,html.companions-off:not(.arriving) #comet-trail,html.companions-off:not(.arriving) #rocket-warp{visibility:hidden!important;opacity:0!important;pointer-events:none!important}
+html.companions-off #pet-station{display:none!important}
+html.space-off #ambient{display:none!important;opacity:0!important}
+html[data-scene=welcome] .profile>.identity>.home-intro{margin:9px 0 0!important;max-width:100%!important}
+html[data-scene=welcome] .profile>.identity .home-value{font:500 clamp(13px,1.1vw,15px)/1.55 var(--body)!important;color:var(--muted)!important;max-width:44ch!important;margin:0!important}
+html[data-scene=welcome] .profile>.identity>p{margin-bottom:0!important}
+#visual-effects-status{color:var(--muted);font:12px/1.5 var(--body);margin-top:6px}
+@media(max-width:760px){html[data-scene=welcome] .profile>.identity .home-value{font-size:13px!important;text-align:center!important;max-width:34ch!important;margin-inline:auto!important}}
