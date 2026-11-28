@@ -1018,3 +1018,47 @@ html[data-scene=welcome] .profile>.identity .home-value{font:500 clamp(13px,1.1v
 html[data-scene=welcome] .profile>.identity>p{margin-bottom:0!important}
 #visual-effects-status{color:var(--muted);font:12px/1.5 var(--body);margin-top:6px}
 @media(max-width:760px){html[data-scene=welcome] .profile>.identity .home-value{font-size:13px!important;text-align:center!important;max-width:34ch!important;margin-inline:auto!important}}
+
+/* V1.2.18 — concise centered identity, portrait interaction and arrival handoff. */
+.profile>.profile-motto{font:italic 500 clamp(12px,1.1vw,16px)/1.45 var(--display)!important;color:var(--accent)!important;text-align:center!important;letter-spacing:.01em;margin:0!important;max-width:100%;width:100%;opacity:1!important;order:-2}
+.profile>.profile-motto em{font:inherit;color:inherit}
+html[data-ajr-theme] .profile>.identity{align-items:center!important;text-align:center!important}
+html[data-ajr-theme] .profile>.identity>.profile-degree{font:600 clamp(12px,1.1vw,15px)/1.5 var(--body)!important;color:var(--ink)!important;text-align:center!important;letter-spacing:.015em!important}
+html[data-scene=welcome] .profile>.identity .home-intro{width:100%!important;text-align:center!important}
+html[data-scene=welcome] .profile>.identity .home-value{font:600 clamp(13px,1.25vw,17px)/1.45 var(--body)!important;color:var(--accent)!important;text-align:center!important;max-width:100%!important;margin:0 auto!important}
+.profile-focus{display:block;font:400 clamp(12px,1vw,14px)/1.5 var(--body);color:var(--muted);margin-top:4px}
+@media(min-width:761px){
+ html[data-scene=welcome] .profile{grid-template-rows:auto 24px minmax(180px,1fr) 1px 39px 1px 48px!important;row-gap:10px!important}
+ html[data-scene=welcome] .profile>.profile-motto{grid-column:1/-1;grid-row:1}
+ html[data-scene=welcome] .profile>.welcome-availability{grid-row:2!important}
+ html[data-scene=welcome] .profile>.portrait{grid-row:3/8!important}
+ html[data-scene=welcome] .profile>.identity{grid-row:2/4!important}
+ html[data-scene=welcome] .profile>.profile-rule:nth-of-type(1){grid-row:4!important}
+ html[data-scene=welcome] .profile>.profile-badges{grid-row:5!important}
+ html[data-scene=welcome] .profile>.profile-rule:nth-of-type(2){grid-row:6!important}
+ html[data-scene=welcome] .profile>.social{grid-row:7!important}
+ html[data-scene=contact] .profile{grid-template-rows:auto auto auto auto auto auto auto auto!important}
+ html[data-scene=contact] .profile>.profile-motto{grid-column:1/-1;grid-row:1}
+ html[data-scene=contact] .profile>.welcome-availability{grid-row:2!important}
+ html[data-scene=contact] .profile>.portrait{grid-row:3/9!important}
+ html[data-scene=contact] .profile>.identity{grid-row:2/4!important}
+ html[data-scene=contact] .profile>.profile-contact-details{grid-row:4!important}
+ html[data-scene=contact] .profile>.profile-rule:nth-of-type(1){grid-row:5!important}
+ html[data-scene=contact] .profile>.profile-badges{grid-row:6!important}
+ html[data-scene=contact] .profile>.profile-rule:nth-of-type(2){grid-row:7!important}
+ html[data-scene=contact] .profile>.social{grid-row:8!important}
+}
+.profile>.portrait{cursor:pointer;isolation:isolate;outline-offset:4px}
+.profile>.portrait:focus-visible{outline:2px solid var(--accent)}
+html:not(.paused) .profile>.portrait>.formal-portrait{transition:scale .65s cubic-bezier(.22,.72,.13,1)!important;transform-origin:center!important}
+@media(hover:hover){html:not(.paused) .profile>.portrait:hover>.formal-portrait{scale:1.035}html:not(.paused) .profile>.portrait:hover{box-shadow:0 0 22px color-mix(in srgb,var(--accent) 30%,transparent)!important}}
+.profile>.portrait::after{content:"";position:absolute;inset:0;z-index:3;pointer-events:none;border-radius:inherit;border:1px solid transparent;opacity:0;background:linear-gradient(115deg,transparent 35%,#fff5 49%,transparent 63%);background-size:260% 100%;background-position:150% 0}
+html:not(.paused) .profile>.portrait.portrait-pulse::after{animation:portrait-sheen .85s ease-out both}
+@keyframes portrait-sheen{0%{opacity:0;background-position:150% 0}25%{opacity:.7}85%{opacity:.25}100%{opacity:0;background-position:-60% 0}}
+.contact-verse{width:100%;max-width:700px;margin:14px auto 0;padding:16px 22px;text-align:center;border:1px solid var(--line);border-radius:16px;background:color-mix(in srgb,var(--card) 85%,transparent);color:var(--ink)}
+.contact-verse h3{font:600 12px/1.4 var(--body);color:var(--accent);margin:0 0 8px;letter-spacing:.04em}
+.contact-verse blockquote{font:italic 500 clamp(14px,1.3vw,18px)/1.6 var(--display);margin:0;color:var(--ink)}
+.contact-verse .verse-reference{font:600 12px/1.4 var(--body);color:var(--accent);margin:9px 0 0}
+html[data-scene=contact] .shell{min-height:100svh;height:auto!important}
+@media(max-width:760px){.profile>.profile-motto{font-size:12px!important}.contact-verse{padding:14px;margin-top:8px}.profile-focus{font-size:12px}}
+@media(prefers-reduced-motion:reduce){.profile>.portrait>.formal-portrait{scale:1!important;transition:none!important}.profile>.portrait::after{animation:none!important;opacity:0!important}}
