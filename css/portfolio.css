@@ -1098,3 +1098,24 @@ html[data-ajr-theme][data-scene=welcome] .profile>.identity .profile-focus{font-
 html[data-ajr-theme] .profile>.portrait>.formal-portrait,html[data-ajr-theme][data-scene=welcome] .profile>.portrait>.formal-portrait,html[data-ajr-theme][data-scene=contact] .profile>.portrait>.formal-portrait{object-fit:contain!important;object-position:center center!important;inset:0!important;width:100%!important;height:100%!important;max-width:none!important;scale:1!important;transform:none!important;translate:none!important;padding:3px;box-sizing:border-box}
 html[data-ajr-theme] .profile>.portrait{background:#968a81!important}
 html:not(.paused) .profile>.portrait:hover>.formal-portrait{scale:1!important}
+
+/* V1.2.23 — common text axis, even baselines, and a larger uncropped portrait. */
+html[data-ajr-theme][data-scene=welcome] .profile>.identity{display:grid!important;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto;justify-items:center!important;align-items:center!important;gap:0!important;text-align:center!important;padding:0!important;width:100%!important;min-width:0}
+html[data-ajr-theme][data-scene=welcome] .profile>.identity h2{grid-row:1;text-align:center!important;justify-self:stretch!important;margin:0!important;padding:0!important;line-height:1.15!important}
+html[data-ajr-theme][data-scene=welcome] .profile>.identity h2::after{margin:12px auto 0!important;width:52%!important}
+html[data-ajr-theme][data-scene=welcome] .profile>.identity>.profile-degree{grid-row:2;margin:0!important;width:100%!important;max-width:none!important;font:400 clamp(13px,1.2vw,16px)/1.8 var(--body)!important;letter-spacing:0!important;text-align:center!important}
+html[data-ajr-theme][data-scene=welcome] .profile>.identity>.home-intro{grid-row:3;margin:0!important;width:100%!important;max-width:none!important;align-self:start!important}
+html[data-ajr-theme][data-scene=welcome] .profile>.identity .home-value{margin:0!important;max-width:none!important;font:600 clamp(14px,1.3vw,17px)/1.65 var(--body)!important;letter-spacing:0!important;text-align:center!important}
+html[data-ajr-theme][data-scene=welcome] .profile>.identity .profile-focus{margin:0!important;font:400 clamp(13px,1.2vw,16px)/1.8 var(--body)!important;letter-spacing:0!important}
+@media(min-width:761px){
+ html[data-ajr-theme][data-scene=welcome] .profile>.identity{grid-template-rows:auto minmax(0,1fr) auto auto minmax(0,1fr);align-self:stretch!important;align-content:stretch!important;padding:8px 0 0!important}
+ html[data-ajr-theme][data-scene=welcome] .profile>.identity>.profile-degree{grid-row:3}
+ html[data-ajr-theme][data-scene=welcome] .profile>.identity>.home-intro{grid-row:4}
+ html[data-ajr-theme][data-scene=welcome] .profile>.portrait{width:100%!important;max-width:440px!important;aspect-ratio:1.14!important;height:auto!important;min-height:0!important;max-height:none!important;align-self:center!important;justify-self:center!important}
+ html[data-ajr-theme][data-scene=welcome] .profile{grid-template-rows:24px minmax(230px,1fr) 1px 39px 1px 48px!important;row-gap:13px!important}
+}
+@media(max-width:760px){html[data-ajr-theme][data-scene=welcome] .profile>.identity{gap:3px!important}html[data-ajr-theme][data-scene=welcome] .profile>.identity h2::after{margin:8px auto 6px!important}}
+/* The source is square and sharp. Top alignment preserves the full hairline while a shallow landscape frame trims only the lower shirt. */
+html[data-ajr-theme] .profile>.portrait>.formal-portrait{padding:0!important;filter:none!important;image-rendering:auto!important;backface-visibility:visible!important;transform:none!important;scale:1!important;object-fit:contain!important;object-position:center top!important}
+@media(min-width:761px){html[data-ajr-theme][data-scene=welcome] .profile>.portrait>.formal-portrait{object-fit:cover!important;object-position:center top!important}}
+html[data-ajr-theme] .profile>.portrait::before{display:none!important}
