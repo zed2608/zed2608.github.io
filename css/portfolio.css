@@ -1087,3 +1087,14 @@ html[data-ajr-theme][data-scene=welcome] .profile>.identity .profile-focus{font-
  html[data-ajr-theme][data-scene=welcome] .profile{row-gap:13px!important}
 }
 @media(max-width:760px){html[data-ajr-theme][data-scene=welcome] .profile>.identity{align-self:center!important;margin:0!important;gap:5px!important}html[data-ajr-theme][data-scene=welcome] .profile>.identity h2::after{margin:8px auto 4px!important}}
+
+/* V1.2.22 — center the three-line introduction independently of the name; preserve the entire portrait. */
+@media(min-width:761px){
+ html[data-ajr-theme][data-scene=welcome] .profile>.identity{align-self:stretch!important;justify-content:flex-start!important;min-height:0;margin:0!important;padding:12px 0 0!important;gap:6px!important;transform:none!important}
+ html[data-ajr-theme][data-scene=welcome] .profile>.identity h2{flex:none;margin:0!important}
+ html[data-ajr-theme][data-scene=welcome] .profile>.identity>.profile-degree{margin-top:auto!important;margin-bottom:0!important;flex:none}
+ html[data-ajr-theme][data-scene=welcome] .profile>.identity>.home-intro{margin-top:0!important;margin-bottom:auto!important;flex:none}
+}
+html[data-ajr-theme] .profile>.portrait>.formal-portrait,html[data-ajr-theme][data-scene=welcome] .profile>.portrait>.formal-portrait,html[data-ajr-theme][data-scene=contact] .profile>.portrait>.formal-portrait{object-fit:contain!important;object-position:center center!important;inset:0!important;width:100%!important;height:100%!important;max-width:none!important;scale:1!important;transform:none!important;translate:none!important;padding:3px;box-sizing:border-box}
+html[data-ajr-theme] .profile>.portrait{background:#968a81!important}
+html:not(.paused) .profile>.portrait:hover>.formal-portrait{scale:1!important}
